@@ -1,3 +1,4 @@
+import VocabularyModules from './VocabularyModules';
 import { useState, useRef, useEffect, useCallback } from "react";
 
 const SCENARIOS = [
@@ -327,9 +328,24 @@ export default function App() {
           </div>
         </div>
       </div>
+    <div style={{ marginTop: 24 }}>
+        <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", letterSpacing: 3, textTransform: "uppercase" }}>Vocabulario</p>
+        <button onClick={() => setScreen("vocabulary")} style={{ width: "100%", padding: "16px", borderRadius: 14, border: "1.5px solid #2a4a3a", background: "#0d1f17", cursor: "pointer", textAlign: "left", color: "#e8e0d5", fontSize: 14, fontWeight: 600 }}>
+          �� Módulo de Vocabulario — 500 palabras
+        </button>
+      </div>
     </div>
   );
 
+  if (screen === "vocabulary") return (
+    <div style={{ minHeight: "100vh", background: "#0e0e14", color: "#e8e0d5", fontFamily: "sans-serif" }}>
+      <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid #1e1e2a", background: "#0e0e14ee", position: "sticky", top: 0, zIndex: 10 }}>
+        <button onClick={() => setScreen("home")} style={{ background: "#18181f", border: "1px solid #2a2a38", color: "#6b6560", borderRadius: 8, width: 36, height: 36, cursor: "pointer", fontSize: 16 }}>←</button>
+        <span style={{ fontSize: 18, fontWeight: 700 }}>📚 Vocabulario</span>
+      </div>
+      <VocabularyModules />
+    </div>
+  );
   // ── CHAT SCREEN ──
   return (
     <div style={{ minHeight: "100vh", background: "#0e0e14", color: "#e8e0d5", fontFamily: "sans-serif", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto" }}>
