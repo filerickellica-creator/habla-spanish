@@ -311,8 +311,22 @@ export default function SpanishVoice({ user, userData, controls }) {
             >👤 Account</button>
             <button onClick={() => controls && controls.signOut()} style={{ background: "none", border: "1px solid #2a2a38", color: "#3a3a4a", borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer", marginTop: 8, marginLeft: 6, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.borderColor = "#f87171"; }} onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}>🚪 Sign Out</button>
           </div>
-          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, margin: "0 0 6px", color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
-          <p style={{ margin: 0, fontSize: 13, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Voice Spanish Practice</p>
+          <svg viewBox="0 0 420 110" width="260" style={{ display: "block", margin: "0 0 4px" }} xmlns="http://www.w3.org/2000/svg">
+            {/* Speech bubble icon */}
+            <rect x="4" y="4" width="88" height="80" rx="18" ry="18" fill="#c8956c"/>
+            <polygon points="18,84 38,84 24,104" fill="#c8956c"/>
+            {/* Waveform bars inside bubble */}
+            <rect x="28" y="38" width="7" height="28" rx="3.5" fill="#3a2a1a" opacity="0.85"/>
+            <rect x="40" y="28" width="7" height="48" rx="3.5" fill="#3a2a1a" opacity="0.85"/>
+            <rect x="52" y="22" width="7" height="56" rx="3.5" fill="#3a2a1a" opacity="0.85"/>
+            <rect x="64" y="30" width="7" height="40" rx="3.5" fill="#3a2a1a" opacity="0.85"/>
+            <rect x="76" y="38" width="7" height="28" rx="3.5" fill="#3a2a1a" opacity="0.85"/>
+            {/* HABLA wordmark */}
+            <text x="112" y="68" fontFamily="Georgia, 'Times New Roman', serif" fontSize="58" fontWeight="900" fill="#e8e0d5" letterSpacing="2">HABLA</text>
+            {/* Tagline */}
+            <text x="113" y="88" fontFamily="sans-serif" fontSize="13" fill="#c8956c" letterSpacing="3">SPEAK SPANISH. LIVE IT.</text>
+            <line x1="113" y1="93" x2="407" y2="93" stroke="#c8956c" strokeWidth="0.8" opacity="0.6"/>
+          </svg>
           <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak naturally. Your AI conversation partner listens, responds in Spanish, and helps you improve.</p>
         </div>
         {!supported && (
