@@ -56,6 +56,7 @@ export default function TranslatorModule() {
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
   const lastTranscriptRef = useRef("");
+  const recognitionTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) setSupported(false);
@@ -100,11 +101,19 @@ export default function TranslatorModule() {
       setEnglishText(t); lastTranscriptRef.current = t;
     };
     recognition.onend = () => {
+      clearTimeout(recognitionTimeoutRef.current);
       const final = lastTranscriptRef.current;
       if (final?.trim()) translate(final.trim()); else setStatus("idle");
     };
-    recognition.onerror = () => { setError("Couldn't hear you. Try again."); setStatus("idle"); };
-    recognitionRef.current = recognition; recognition.start();
+    recognition.onerror = (e) => {
+      clearTimeout(recognitionTimeoutRef.current);
+      if (e.error === "no-speech" || e.error === "aborted") { setStatus("idle"); }
+      else { setError("Couldn't hear you. Try again."); setStatus("idle"); }
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+    // Safety timeout: force-stop recognition after 15s to prevent infinite freeze
+    recognitionTimeoutRef.current = setTimeout(() => { recognition.stop(); }, 15000);
   }, [status, translate]);
 
   const stopListening = useCallback(() => { recognitionRef.current?.stop(); }, []);
@@ -200,8 +209,8 @@ export default function TranslatorModule() {
               <button
                 onMouseDown={supported && !busy ? startListening : undefined}
                 onMouseUp={isListening ? stopListening : undefined}
-                onTouchStart={supported && !busy ? startListening : undefined}
-                onTouchEnd={isListening ? stopListening : undefined}
+                onTouchStart={supported && !busy ? (e) => { e.preventDefault(); startListening(); } : undefined}
+                onTouchEnd={(e) => { e.preventDefault(); stopListening(); }}
                 disabled={!supported || (busy && !isListening)}
                 style={{ width: 58, height: 58, borderRadius: "50%", background: isListening ? TRANSLATOR_COLOR : isSpeaking || isThinking ? "#1e1e2a" : TRANSLATOR_COLOR + "22", border: `2px solid ${isListening ? TRANSLATOR_COLOR : TRANSLATOR_COLOR + "50"}`, cursor: supported && !busy ? "pointer" : isListening ? "pointer" : "default", color: isListening ? "#0e0e14" : TRANSLATOR_COLOR, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: !supported || (busy && !isListening) ? 0.4 : 1, boxShadow: isListening ? `0 0 24px ${TRANSLATOR_COLOR}60` : "none" }}>
                 <MicIcon size={22} />
