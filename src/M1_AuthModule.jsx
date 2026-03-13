@@ -139,11 +139,17 @@ function LoginForm({ auth, go }) {
   const [show,  setShow]  = useState(false);
   const [busy,  setBusy]  = useState(false);
   const [err,   setErr]   = useState("");
+  const [cleared, setCleared] = useState(false);
   const submit = async (e) => {
     e.preventDefault(); setErr(""); setBusy(true);
     try { await signInWithEmailAndPassword(auth, email.trim(), pw); }
     catch (ex) { setErr(friendlyErr(ex.code)); }
     finally    { setBusy(false); }
+  };
+  const clearSession = () => {
+    localStorage.removeItem(SESSION_KEY);
+    setCleared(true);
+    setTimeout(() => setCleared(false), 3000);
   };
   return (
     <form onSubmit={submit} style={css.form} noValidate>
@@ -152,6 +158,9 @@ function LoginForm({ auth, go }) {
       {err && <ErrBox msg={err} />}
       <PrimaryBtn busy={busy} label="Sign In" />
       <GhostBtn label="Forgot password?" onClick={() => go("forgot")} />
+      <button type="button" onClick={clearSession} style={css.clearBtn}>
+        {cleared ? "Session cleared — try signing in" : "Signing in not working? Clear session"}
+      </button>
       <Divider />
       <SwitchRow text="No account yet?" link="Create one free" onClick={() => go("signup")} />
     </form>
@@ -312,6 +321,7 @@ const css = {
   eye:        { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#555", padding: 0 },
   primaryBtn: { marginTop: 6, width: "100%", padding: "13px", background: "linear-gradient(135deg, #c8956c, #a87040)", border: "none", borderRadius: 12, color: "#0e0e14", fontSize: 15, fontWeight: 800, fontFamily: "Georgia, serif", cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 48 },
   ghostBtn:   { background: "none", border: "none", color: "#4a4540", cursor: "pointer", fontSize: 13, fontFamily: "sans-serif", padding: "10px 0 0", textDecoration: "underline", textAlign: "left" },
+  clearBtn:   { background: "none", border: "none", color: "#2a2a3a", cursor: "pointer", fontSize: 11, fontFamily: "sans-serif", padding: "6px 0 0", textDecoration: "underline", textAlign: "left" },
   trialBadge: { marginTop: 11, textAlign: "center", fontSize: 12, color: "#7a6a5a", fontFamily: "sans-serif", background: "#c8956c08", border: "1px solid #c8956c1e", borderRadius: 8, padding: "8px 12px" },
   divRow:     { display: "flex", alignItems: "center", gap: 12, margin: "18px 0" },
   divLine:    { flex: 1, height: 1, background: "#1a1a26" },
