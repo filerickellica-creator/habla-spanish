@@ -327,7 +327,7 @@ export default function SpanishVoice({ user, userData, controls }) {
             <text x="113" y="88" fontFamily="sans-serif" fontSize="13" fill="#c8956c" letterSpacing="3">SPEAK SPANISH. LIVE IT.</text>
             <line x1="113" y1="93" x2="407" y2="93" stroke="#c8956c" strokeWidth="0.8" opacity="0.6"/>
           </svg>
-          <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak naturally. Your AI conversation partner listens, responds in Spanish, and helps you improve.</p>
+          <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", fontFamily: "sans-serif", fontStyle: "italic" }}>Speak Spanish freely. I will listen and help you improve.</p>
         </div>
         {!supported && (
           <div style={{ background: "#2a1a1a", border: "1px solid #c86c6c", borderRadius: 12, padding: 16, marginBottom: 20, fontSize: 13, color: "#f87171", fontFamily: "sans-serif" }}>
