@@ -6,7 +6,7 @@ import { getAuth, onAuthStateChanged,
          sendPasswordResetEmail,
          updateProfile, signOut }          from "firebase/auth";
 import { getFirestore, doc, getDoc,
-         setDoc, serverTimestamp }         from "firebase/firestore";
+         setDoc, onSnapshot, serverTimestamp }         from "firebase/firestore";
 
 const TERMS_URL = "https://firebasestorage.googleapis.com/v0/b/habla-espanyol.firebasestorage.app/o/Habla_Terms_of_Service.pdf?alt=media&token=0ca6ca67-66ab-45dd-8bd8-a00f47578d06";
 const PRIVACY_URL = "https://firebasestorage.googleapis.com/v0/b/habla-espanyol.firebasestorage.app/o/Habla_Privacy_Policy.pdf?alt=media&token=3582199b-c6b6-4f3d-8f81-8963ad60980f";
@@ -23,6 +23,8 @@ const FIREBASE_CONFIG = {
 const firebaseApp = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
 const auth        = getAuth(firebaseApp);
 const db          = getFirestore(firebaseApp);
+const SESSION_KEY = "habla_session_token";
+const generateSessionToken = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export const AuthContext = createContext(null);
 export const useAuth    = () => useContext(AuthContext);
@@ -55,18 +57,40 @@ export default function AuthModule({ onReady }) {
   const [userData, setUserData] = useState(null);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (fbUser) => {
+    let unsubSession = null;
+    const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
+      if (unsubSession) { unsubSession(); unsubSession = null; }
       if (fbUser) {
         const data = await fetchOrCreateUserDoc(fbUser);
+        const userRef = doc(db, "users", fbUser.uid);
+        const localToken = localStorage.getItem(SESSION_KEY);
+        if (!localToken) {
+          const newToken = generateSessionToken();
+          localStorage.setItem(SESSION_KEY, newToken);
+          await setDoc(userRef, { sessionToken: newToken }, { merge: true });
+        } else if (localToken !== data.sessionToken) {
+          localStorage.removeItem(SESSION_KEY);
+          await signOut(auth);
+          return;
+        }
         setUser(fbUser);
         setUserData(data);
         setPhase("ready");
+        unsubSession = onSnapshot(userRef, (snap) => {
+          const firestoreToken = snap.data()?.sessionToken;
+          const currentLocalToken = localStorage.getItem(SESSION_KEY);
+          if (firestoreToken && currentLocalToken && firestoreToken !== currentLocalToken) {
+            localStorage.removeItem(SESSION_KEY);
+            signOut(auth);
+          }
+        });
       } else {
         setUser(null);
         setUserData(null);
         setPhase("auth");
       }
     });
+    return () => { unsubAuth(); if (unsubSession) unsubSession(); };
   }, []);
 
   const refreshUserData = useCallback(async () => {
@@ -75,7 +99,7 @@ export default function AuthModule({ onReady }) {
     if (snap.exists()) setUserData(snap.data());
   }, [user]);
 
-  const handleSignOut = useCallback(() => signOut(auth), []);
+  const handleSignOut = useCallback(() => { localStorage.removeItem(SESSION_KEY); return signOut(auth); }, []);
   const controls = { signOut: handleSignOut, refreshUserData };
 
   if (phase === "loading") return <SplashScreen />;
