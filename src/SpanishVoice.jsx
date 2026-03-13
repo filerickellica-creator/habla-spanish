@@ -142,11 +142,11 @@ export default function SpanishVoice({ user, userData, controls }) {
     synthRef.current.cancel();
   };
 
-  const speak = useCallback((text) => {
+  const speak = useCallback((text, rate = 0.92) => {
     synthRef.current.cancel();
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = "es-ES";
-    utter.rate = 0.92;
+    utter.rate = rate;
     utter.pitch = 1.05;
     const voices = synthRef.current.getVoices();
     const spanishVoice = voices.find(v => v.lang.startsWith("es"));
@@ -156,6 +156,12 @@ export default function SpanishVoice({ user, userData, controls }) {
     utter.onerror = () => setStatus("idle");
     synthRef.current.speak(utter);
   }, []);
+
+  const repeatSlow = useCallback(() => {
+    const lastAI = [...messages].reverse().find(m => m.role === "ai");
+    if (!lastAI) return;
+    speak(extractSpanishOnly(lastAI.text), 0.55);
+  }, [messages, speak]);
 
   const callClaude = useCallback(async (userText, currentMessages, scen, lvl) => {
     setStatus("thinking");
@@ -489,6 +495,16 @@ export default function SpanishVoice({ user, userData, controls }) {
               {isThinking ? "⌛" : isSpeaking ? "🔊" : "🎙️"}
             </button>
           </div>
+          {level === "beginner" ? (
+            <button onClick={repeatSlow} disabled={isThinking || isSpeaking || isListening || messages.filter(m => m.role === "ai").length === 0}
+              title="Repeat slowly"
+              style={{ width: 48, height: 48, borderRadius: "50%", background: "#12121a", border: "1.5px solid #2a2a42", color: "#3a3a4a", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: messages.filter(m => m.role === "ai").length === 0 ? 0.3 : 1 }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a42"; e.currentTarget.style.color = "#3a3a4a"; }}
+            >🐢</button>
+          ) : (
+            <div style={{ width: 48 }} />
+          )}
         </div>
         <p style={{ margin: 0, fontSize: 11, color: "#2a2a38", letterSpacing: 1.5, textTransform: "uppercase" }}>
           {isListening ? "Release to send" : "Hold to speak"}
