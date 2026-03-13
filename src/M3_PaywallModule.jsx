@@ -1,14 +1,52 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getApps, initializeApp } from "firebase/app";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 
 // ─── UPDATE THESE WHEN STRIPE IS READY ───────────────────────────────────────
 const STRIPE_MONTHLY_URL = "https://buy.stripe.com/PLACEHOLDER_MONTHLY";
 const STRIPE_ANNUAL_URL  = "https://buy.stripe.com/PLACEHOLDER_ANNUAL";
 // ─────────────────────────────────────────────────────────────────────────────
 
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0",
+  authDomain:        "habla-espanyol.firebaseapp.com",
+  projectId:         "habla-espanyol",
+  storageBucket:     "habla-espanyol.firebasestorage.app",
+  messagingSenderId: "92424848474",
+  appId:             "1:92424848474:web:80612d9b22f0f391ba4463",
+};
+
+const firebaseApp = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+const db = getFirestore(firebaseApp);
+
+const DEFAULTS = {
+  monthly_price: "7.99",
+  annual_price:  "39.99",
+  annual_note:   "Save 58% — just $3.33/mo",
+  monthly_note:  "Cancel anytime",
+  effective_date: "",
+};
+
 export default function PaywallModule({ userData }) {
-  const [hover, setHover] = useState(null);
+  const [hover, setHover]       = useState(null);
+  const [pricing, setPricing]   = useState(DEFAULTS);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    getDoc(doc(db, "config", "pricing"))
+      .then(snap => {
+        if (snap.exists()) setPricing({ ...DEFAULTS, ...snap.data() });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const name = userData?.name || "there";
+
+  const fmt = (val) => {
+    const n = parseFloat(val);
+    return isNaN(n) ? val : `$${n.toFixed(2)}`;
+  };
 
   return (
     <div style={{
@@ -19,7 +57,7 @@ export default function PaywallModule({ userData }) {
     }}>
       {/* Logo */}
       <div style={{marginBottom:8}}>
-        <span style={{fontSize:36}}>🇪��</span>
+        <span style={{fontSize:36}}>🇪🇸</span>
       </div>
       <h1 style={{
         color:"#f0e6d3", fontSize:32, fontWeight:800,
@@ -48,27 +86,25 @@ export default function PaywallModule({ userData }) {
       {/* Pricing cards */}
       <div style={{
         display:"flex", gap:16, flexWrap:"wrap",
-        justifyContent:"center", marginBottom:24,
+        justifyContent:"center", marginBottom: pricing.effective_date ? 8 : 24,
       }}>
-        {/* Annual — Best Value */}
         <PricingCard
           badge="Best Value"
           title="Annual"
-          price="$39.99"
+          price={loading ? "..." : fmt(pricing.annual_price)}
           period="/ year"
-          note="Save 58% — just $3.33/mo"
+          note={pricing.annual_note}
           url={STRIPE_ANNUAL_URL}
           highlight={true}
           hover={hover === "annual"}
           onHover={setHover}
           id="annual"
         />
-        {/* Monthly */}
         <PricingCard
           title="Monthly"
-          price="$7.99"
+          price={loading ? "..." : fmt(pricing.monthly_price)}
           period="/ month"
-          note="Cancel anytime"
+          note={pricing.monthly_note}
           url={STRIPE_MONTHLY_URL}
           highlight={false}
           hover={hover === "monthly"}
@@ -76,6 +112,16 @@ export default function PaywallModule({ userData }) {
           id="monthly"
         />
       </div>
+
+      {/* Effective date badge */}
+      {pricing.effective_date && (
+        <p style={{
+          color:"#5a5040", fontSize:11, letterSpacing:1,
+          textTransform:"uppercase", margin:"0 0 20px",
+        }}>
+          Pricing effective {pricing.effective_date}
+        </p>
+      )}
 
       {/* Features */}
       <div style={{
@@ -85,7 +131,7 @@ export default function PaywallModule({ userData }) {
       }}>
         {[
           "✓  Unlimited AI conversations",
-          "✓  All 5 scenarios",
+          "✓  All 6 scenarios",
           "✓  Grammar feedback",
           "✓  Vocabulary modules",
           "✓  Hints & coaching",
