@@ -1,23 +1,11 @@
 import { useState, useEffect } from "react";
-import { getApps, initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
 
 // ─── UPDATE THESE WHEN STRIPE IS READY ───────────────────────────────────────
 const STRIPE_MONTHLY_URL = "https://buy.stripe.com/PLACEHOLDER_MONTHLY";
 const STRIPE_ANNUAL_URL  = "https://buy.stripe.com/PLACEHOLDER_ANNUAL";
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0",
-  authDomain:        "habla-espanyol.firebaseapp.com",
-  projectId:         "habla-espanyol",
-  storageBucket:     "habla-espanyol.firebasestorage.app",
-  messagingSenderId: "92424848474",
-  appId:             "1:92424848474:web:80612d9b22f0f391ba4463",
-};
-
-const firebaseApp = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
-const db = getFirestore(firebaseApp);
+const PRICING_URL = "https://firestore.googleapis.com/v1/projects/habla-espanyol/databases/(default)/documents/config/pricing";
 
 const DEFAULTS = {
   monthly_price: "7.99",
@@ -33,12 +21,20 @@ export default function PaywallModule({ userData }) {
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
-    getDoc(doc(db, "config", "pricing"))
-      .then(snap => {
-        console.log("Firestore snap exists:", snap.exists(), "data:", snap.data());
-        if (snap.exists()) setPricing({ ...DEFAULTS, ...snap.data() });
+    fetch(PRICING_URL)
+      .then(r => r.json())
+      .then(doc => {
+        if (!doc.fields) return;
+        const f = doc.fields;
+        setPricing({
+          monthly_price:  f.monthly_price?.doubleValue  ?? f.monthly_price?.integerValue  ?? DEFAULTS.monthly_price,
+          annual_price:   f.annual_price?.doubleValue   ?? f.annual_price?.integerValue   ?? DEFAULTS.annual_price,
+          annual_note:    f.annual_note?.stringValue    ?? DEFAULTS.annual_note,
+          monthly_note:   f.monthly_note?.stringValue   ?? DEFAULTS.monthly_note,
+          effective_date: f.effective_date?.stringValue ?? DEFAULTS.effective_date,
+        });
       })
-      .catch(err => console.error("Firestore pricing read failed:", err))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
