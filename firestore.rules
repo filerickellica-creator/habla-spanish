@@ -10,6 +10,9 @@ service cloud.firestore {
                         .hasAny(['subscriptionStatus','subscriptionExpiry',
                                  'stripeCustomerId','trialStartedAt','trialDays']);
     }
+    match /config/{docId} {
+      allow read: if true;
+    }
     match /{document=**} {
       allow read, write: if false;
     }
