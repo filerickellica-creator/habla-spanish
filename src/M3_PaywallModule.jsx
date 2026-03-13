@@ -5,36 +5,21 @@ const STRIPE_MONTHLY_URL = "https://buy.stripe.com/PLACEHOLDER_MONTHLY";
 const STRIPE_ANNUAL_URL  = "https://buy.stripe.com/PLACEHOLDER_ANNUAL";
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function PaywallModule({ userData, onClose }) {
+export default function PaywallModule({ userData }) {
   const [hover, setHover] = useState(null);
 
   const name = userData?.name || "there";
 
-  const content = (
+  return (
     <div style={{
-      minHeight: onClose ? "auto" : "100vh", background:"#0e0c0a",
+      minHeight:"100vh", background:"#0e0c0a",
       display:"flex", flexDirection:"column",
       alignItems:"center", justifyContent:"center",
       fontFamily:"sans-serif", padding:"40px 20px",
-      position: "relative", borderRadius: onClose ? 20 : 0,
     }}>
-      {onClose && (
-        <button onClick={onClose} style={{
-          position:"absolute", top:16, right:16,
-          background:"none", border:"1px solid #2a2018",
-          color:"#8a7a6a", borderRadius:8, width:32, height:32,
-          cursor:"pointer", fontSize:16, display:"flex",
-          alignItems:"center", justifyContent:"center",
-          transition:"all 0.2s",
-        }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#f0e6d3"; e.currentTarget.style.borderColor = "#8a7a6a"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#8a7a6a"; e.currentTarget.style.borderColor = "#2a2018"; }}
-        >✕</button>
-      )}
-
       {/* Logo */}
       <div style={{marginBottom:8}}>
-        <span style={{fontSize:36}}>🇪🇸</span>
+        <span style={{fontSize:36}}>🇪��</span>
       </div>
       <h1 style={{
         color:"#f0e6d3", fontSize:32, fontWeight:800,
@@ -55,9 +40,8 @@ export default function PaywallModule({ userData, onClose }) {
           Hey {name} 👋
         </p>
         <p style={{color:"#8a7a6a", fontSize:14, margin:0, lineHeight:1.7}}>
-          {onClose
-            ? "This feature is available for premium subscribers. Upgrade to unlock all levels, scenarios, and the Translate tool."
-            : "Your free trial has ended. Upgrade to keep practicing your Spanish with your AI conversation partner."}
+          Your free trial has ended. Upgrade to keep practicing your Spanish
+          with your AI conversation partner.
         </p>
       </div>
 
@@ -102,8 +86,6 @@ export default function PaywallModule({ userData, onClose }) {
         {[
           "✓  Unlimited AI conversations",
           "✓  All 5 scenarios",
-          "✓  All levels (Intermedio & Avanzado)",
-          "✓  Translate tool",
           "✓  Grammar feedback",
           "✓  Vocabulary modules",
           "✓  Hints & coaching",
@@ -119,23 +101,6 @@ export default function PaywallModule({ userData, onClose }) {
       </p>
     </div>
   );
-
-  if (onClose) {
-    return (
-      <div style={{
-        position:"fixed", inset:0, zIndex:1000,
-        background:"#000000cc", display:"flex",
-        alignItems:"center", justifyContent:"center",
-        padding:"20px", overflowY:"auto",
-      }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-        <div style={{ width:"100%", maxWidth:500, maxHeight:"90vh", overflowY:"auto", borderRadius:20 }}>
-          {content}
-        </div>
-      </div>
-    );
-  }
-
-  return content;
 }
 
 function PricingCard({ badge, title, price, period, note, url, highlight, hover, onHover, id }) {
