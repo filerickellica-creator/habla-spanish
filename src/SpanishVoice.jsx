@@ -150,9 +150,11 @@ export default function SpanishVoice({ user, userData, controls }) {
     const voices = synthRef.current.getVoices();
     const spanishVoice = voices.find(v => v.lang.startsWith("es"));
     if (spanishVoice) utter.voice = spanishVoice;
-    utter.onstart = () => setStatus("speaking");
+    // iOS: speechSynthesis called outside user-gesture context fails silently — reset after 1s if never started
+    const fallback = setTimeout(() => setStatus("idle"), 1000);
+    utter.onstart = () => { clearTimeout(fallback); setStatus("speaking"); };
     utter.onend = () => setStatus("idle");
-    utter.onerror = () => setStatus("idle");
+    utter.onerror = () => { clearTimeout(fallback); setStatus("idle"); };
     synthRef.current.speak(utter);
   }, []);
 
@@ -172,6 +174,7 @@ export default function SpanishVoice({ user, userData, controls }) {
       setAiText(reply);
       const updated = [...currentMessages, { role: "user", text: userText }, { role: "ai", text: reply }];
       setMessages(updated);
+      setStatus("idle");
       speak(extractSpanishOnly(reply));
       return updated;
     } catch {
@@ -259,6 +262,7 @@ export default function SpanishVoice({ user, userData, controls }) {
       const reply = data.content?.find(b => b.type === "text")?.text || "¡Hola!";
       setAiText(reply);
       setMessages([{ role: "ai", text: reply }]);
+      setStatus("idle");
       speak(extractSpanishOnly(reply));
     } catch {
       setError("Connection error.");

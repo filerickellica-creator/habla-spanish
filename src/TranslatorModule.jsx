@@ -69,9 +69,11 @@ export default function TranslatorModule() {
     const voices = synthRef.current.getVoices();
     const spanishVoice = voices.find(v => v.lang.startsWith("es"));
     if (spanishVoice) utter.voice = spanishVoice;
-    utter.onstart = () => setStatus("speaking");
+    // iOS: speechSynthesis called outside user-gesture context fails silently — reset after 1s if never started
+    const fallback = setTimeout(() => setStatus("idle"), 1000);
+    utter.onstart = () => { clearTimeout(fallback); setStatus("speaking"); };
     utter.onend = () => setStatus("idle");
-    utter.onerror = () => setStatus("idle");
+    utter.onerror = () => { clearTimeout(fallback); setStatus("idle"); };
     synthRef.current.speak(utter);
   }, []);
 
@@ -90,7 +92,7 @@ export default function TranslatorModule() {
         }),
         timeout,
       ]);
-      if (translation) { setSpanishText(translation); speakSpanish(translation); }
+      if (translation) { setSpanishText(translation); setStatus("idle"); speakSpanish(translation); }
       else { setError("No translation returned."); setStatus("idle"); }
     } catch (err) {
       setError(err.message === "timeout" ? "Request timed out. Try again." : "Connection error. Try again.");
