@@ -37,7 +37,7 @@ export default function PaywallModule({ userData }) {
       .then(snap => {
         if (snap.exists()) setPricing({ ...DEFAULTS, ...snap.data() });
       })
-      .catch(() => {})
+      .catch(err => console.error("Firestore pricing read failed:", err))
       .finally(() => setLoading(false));
   }, []);
 
