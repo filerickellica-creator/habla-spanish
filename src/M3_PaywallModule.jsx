@@ -35,6 +35,7 @@ export default function PaywallModule({ userData }) {
   useEffect(() => {
     getDoc(doc(db, "config", "pricing"))
       .then(snap => {
+        console.log("Firestore snap exists:", snap.exists(), "data:", snap.data());
         if (snap.exists()) setPricing({ ...DEFAULTS, ...snap.data() });
       })
       .catch(err => console.error("Firestore pricing read failed:", err))
