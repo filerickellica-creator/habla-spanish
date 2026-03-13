@@ -1,0 +1,24 @@
+import { useState } from "react";
+import AuthModule from "./M1_AuthModule";
+import TrialModule from "./M2_TrialModule";
+import PaywallModule from "./M3_PaywallModule";
+import SpanishVoice from "./SpanishVoice";
+
+export default function App() {
+  const [expired, setExpired] = useState(false);
+  const [currentUserData, setCurrentUserData] = useState(null);
+
+  return (
+    <AuthModule onReady={(user, userData, controls) => {
+      if (currentUserData !== userData) setCurrentUserData(userData);
+      if (expired || userData?.subscriptionStatus === "expired") {
+        return <PaywallModule userData={userData} />;
+      }
+      return (
+        <TrialModule userData={userData} onExpired={() => setExpired(true)}>
+          <SpanishVoice user={user} userData={userData} controls={controls} />
+        </TrialModule>
+      );
+    }} />
+  );
+}
