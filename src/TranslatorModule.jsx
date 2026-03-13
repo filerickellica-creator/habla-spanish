@@ -46,7 +46,7 @@ function Waveform({ active }) {
   );
 }
 
-export default function TranslatorModule({ locked = false, onShowPaywall }) {
+export default function TranslatorModule() {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState("idle");
   const [englishText, setEnglishText] = useState("");
@@ -114,33 +114,6 @@ export default function TranslatorModule({ locked = false, onShowPaywall }) {
   const isThinking = status === "thinking";
   const isSpeaking = status === "speaking";
   const busy = isListening || isThinking || isSpeaking;
-
-  if (locked) {
-    return (
-      <div style={{ marginBottom: 28 }}>
-        <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Translate</p>
-        <button onClick={onShowPaywall} style={{
-          width: "100%", padding: "18px 20px", borderRadius: 14,
-          border: "1.5px solid #1e1e2a", background: "#12121a",
-          cursor: "pointer", textAlign: "left", transition: "all 0.2s",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          opacity: 0.6,
-        }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = "#c8956c"; e.currentTarget.style.opacity = "0.85"; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.opacity = "0.6"; }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 22 }}>🔤</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#6a6460", fontFamily: "sans-serif" }}>English → Spanish</div>
-              <div style={{ fontSize: 11, color: "#3a3835", fontFamily: "sans-serif", marginTop: 2 }}>Premium feature — tap to unlock</div>
-            </div>
-          </div>
-          <span style={{ fontSize: 16 }}>🔒</span>
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div style={{ marginBottom: 28 }}>
