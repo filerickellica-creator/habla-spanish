@@ -1,5 +1,6 @@
 import TranslatorModule from "./TranslatorModule";
 import VocabularyModules from "./VocabularyModules";
+import PaywallModule from "./M3_PaywallModule";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import AccountModule from "./M5_AccountModule";
@@ -117,6 +118,10 @@ export default function SpanishVoice({ user, userData, controls }) {
   const [hint, setHint] = useState("");
   const [grammarLoading, setGrammarLoading] = useState(false);
   const [corrections, setCorrections] = useState({});
+
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  const isTrial = userData?.subscriptionStatus === "trial";
 
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
@@ -316,36 +321,61 @@ export default function SpanishVoice({ user, userData, controls }) {
         <div style={{ marginBottom: 28 }}>
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Level</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {LEVELS.map(l => (
-              <button key={l.id} onClick={() => setLevel(l.id)} style={{
-                padding: "12px 16px", borderRadius: 10, textAlign: "left",
-                border: `1.5px solid ${level === l.id ? "#c8956c" : "#1e1e2a"}`,
-                background: level === l.id ? "#c8956c18" : "#12121a",
-                color: level === l.id ? "#e8d5c0" : "#5a5555",
-                cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
-              }}>{l.label}</button>
-            ))}
+            {LEVELS.map(l => {
+              const levelLocked = isTrial && l.id !== "beginner";
+              return (
+                <button key={l.id} onClick={() => levelLocked ? setShowPaywall(true) : setLevel(l.id)} style={{
+                  padding: "12px 16px", borderRadius: 10, textAlign: "left",
+                  border: `1.5px solid ${!levelLocked && level === l.id ? "#c8956c" : "#1e1e2a"}`,
+                  background: !levelLocked && level === l.id ? "#c8956c18" : "#12121a",
+                  color: levelLocked ? "#3a3535" : level === l.id ? "#e8d5c0" : "#5a5555",
+                  cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  opacity: levelLocked ? 0.6 : 1,
+                }}>
+                  <span>{l.label}</span>
+                  {levelLocked && <span style={{ fontSize: 13 }}>🔒</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div>
         {/* Translator */}
-        <TranslatorModule />
+        <TranslatorModule locked={isTrial} onShowPaywall={() => setShowPaywall(true)} />
 
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {SCENARIOS.map((s, i) => (
-              <button key={s.id} onClick={() => startScenario(s)} disabled={!supported} style={{
-                padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
-                background: "#12121a", cursor: supported ? "pointer" : "not-allowed", textAlign: "left",
-                animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = "#12121a"; }}
-              >
-                <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
-              </button>
-            ))}
+            {SCENARIOS.map((s, i) => {
+              const scenLocked = isTrial && s.id !== "cafe";
+              return (
+                <button key={s.id}
+                  onClick={() => { if (scenLocked) { setShowPaywall(true); return; } startScenario(s); }}
+                  disabled={!supported && !scenLocked}
+                  style={{
+                    padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
+                    background: "#12121a",
+                    cursor: scenLocked ? "pointer" : supported ? "pointer" : "not-allowed",
+                    textAlign: "left", position: "relative",
+                    animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
+                    opacity: scenLocked ? 0.5 : 1,
+                  }}
+                  onMouseEnter={e => {
+                    if (!scenLocked) { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; }
+                    else { e.currentTarget.style.opacity = "0.75"; }
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = "#1e1e2a";
+                    e.currentTarget.style.background = "#12121a";
+                    e.currentTarget.style.opacity = scenLocked ? "0.5" : "1";
+                  }}
+                >
+                  <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: scenLocked ? "#4a4545" : "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
+                  {scenLocked && <div style={{ position: "absolute", top: 8, right: 8, fontSize: 13 }}>🔒</div>}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -353,6 +383,7 @@ export default function SpanishVoice({ user, userData, controls }) {
           <span style={{ fontSize: 22 }}>📚</span>
           <div><div style={{ fontWeight: 700, fontSize: 14 }}>Vocabulario</div><div style={{ fontSize: 12, marginTop: 2, opacity: 0.6 }}>500 words · 8 modules · flip cards</div></div>
         </button>
+    {showPaywall && <PaywallModule userData={userData} onClose={() => setShowPaywall(false)} />}
     </div>
   );
 
