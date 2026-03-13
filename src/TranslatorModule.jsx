@@ -79,14 +79,23 @@ export default function TranslatorModule() {
     if (!text.trim()) return;
     setStatus("thinking"); setError(""); setSpanishText("");
     try {
-      const translation = await callCloudFn({
-        system: "You are a Spanish translator. Translate English to Spanish. Output ONLY the Spanish text. Never output English. Never explain. Just the Spanish translation.",
-        messages: [{ role: "user", content: `Translate this to Spanish: ${text.trim()}` }],
-        max_tokens: 300,
-      });
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 15000)
+      );
+      const translation = await Promise.race([
+        callCloudFn({
+          system: "You are a Spanish translator. Translate English to Spanish. Output ONLY the Spanish text. Never output English. Never explain. Just the Spanish translation.",
+          messages: [{ role: "user", content: `Translate this to Spanish: ${text.trim()}` }],
+          max_tokens: 300,
+        }),
+        timeout,
+      ]);
       if (translation) { setSpanishText(translation); speakSpanish(translation); }
       else { setError("No translation returned."); setStatus("idle"); }
-    } catch { setError("Connection error. Try again."); setStatus("idle"); }
+    } catch (err) {
+      setError(err.message === "timeout" ? "Request timed out. Try again." : "Connection error. Try again.");
+      setStatus("idle");
+    }
   }, [speakSpanish]);
 
   const startListening = useCallback(() => {
