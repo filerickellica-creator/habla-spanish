@@ -127,9 +127,22 @@ export default function SpanishVoice({ user, userData, controls }) {
       setSupported(false);
       return;
     }
-    navigator.mediaDevices?.getUserMedia({ audio: true })
-      .then(stream => { stream.getTracks().forEach(t => t.stop()); })
-      .catch(() => setSupported(false));
+    // Check existing permission state before requesting — avoids re-prompting on iOS Safari
+    const checkMic = async () => {
+      if (navigator.permissions) {
+        try {
+          const result = await navigator.permissions.query({ name: "microphone" });
+          if (result.state === "granted") return; // already granted, no prompt needed
+          if (result.state === "denied") { setSupported(false); return; }
+        } catch (_) {
+          // permissions API not supported (e.g. older Safari) — fall through to getUserMedia
+        }
+      }
+      navigator.mediaDevices?.getUserMedia({ audio: true })
+        .then(stream => { stream.getTracks().forEach(t => t.stop()); })
+        .catch(() => setSupported(false));
+    };
+    checkMic();
   }, []);
 
   useEffect(() => {
