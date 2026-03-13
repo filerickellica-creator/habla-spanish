@@ -112,7 +112,8 @@ export default function TranslatorModule() {
     recognition.onend = () => {
       clearTimeout(recognitionTimeoutRef.current);
       const final = lastTranscriptRef.current;
-      if (final?.trim()) translate(final.trim()); else setStatus("idle");
+      // Small delay lets iOS WebKit release the audio session before initiating network request
+      if (final?.trim()) setTimeout(() => translate(final.trim()), 300); else setStatus("idle");
     };
     recognition.onerror = (e) => {
       clearTimeout(recognitionTimeoutRef.current);
