@@ -13,6 +13,7 @@ const SCENARIOS = [
   { id: "directions", emoji: "🗺️", label: "Direcciones", color: "#6cb4c8", prompt: "You are a helpful local on the streets of Barcelona giving directions to a tourist. Use street vocabulary and helpful phrases. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "restaurant", emoji: "🍽️", label: "Restaurante", color: "#c86c6c", prompt: "You are an enthusiastic waiter at a traditional Spanish restaurant. Describe the menu and take orders. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "amigo", emoji: "👋", label: "Amigo", color: "#a06cc8", prompt: "You are a fun, casual Spanish-speaking friend catching up. Talk about weekend plans and everyday life. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "transport", emoji: "🚌", label: "Transporte", color: "#c8b06c", prompt: "You are a bus driver or metro attendant in Madrid. Help a tourist buy a ticket, find their route, and understand stops. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
 ];
 
 const LEVELS = [
@@ -341,9 +342,6 @@ export default function SpanishVoice({ user, userData, controls }) {
           </div>
         </div>
         <div>
-        {/* Translator */}
-        <TranslatorModule locked={isTrial} onShowPaywall={() => setShowPaywall(true)} />
-
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {SCENARIOS.map((s, i) => {
@@ -379,7 +377,9 @@ export default function SpanishVoice({ user, userData, controls }) {
           </div>
         </div>
       </div>
-        <button onClick={() => setScreen("vocab")} style={{ marginTop: 20, width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#12121a", color: "#8a8075", cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 12 }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#c4b5fd"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.color = "#8a8075"; }}>
+        {/* Translator — below all scenarios */}
+        <TranslatorModule locked={isTrial} onShowPaywall={() => setShowPaywall(true)} />
+        <button onClick={() => setScreen("vocab")} style={{ marginTop: 0, width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#12121a", color: "#8a8075", cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 12 }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#c4b5fd"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.color = "#8a8075"; }}>
           <span style={{ fontSize: 22 }}>📚</span>
           <div><div style={{ fontWeight: 700, fontSize: 14 }}>Vocabulario</div><div style={{ fontSize: 12, marginTop: 2, opacity: 0.6 }}>500 words · 8 modules · flip cards</div></div>
         </button>
