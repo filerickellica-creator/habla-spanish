@@ -1,4 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { initializeApp, getApps } from "firebase/app";
+import { getFirestore, doc, onSnapshot } from "firebase/firestore";
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0",
+  authDomain:        "habla-espanyol.firebaseapp.com",
+  projectId:         "habla-espanyol",
+  storageBucket:     "habla-espanyol.firebasestorage.app",
+  messagingSenderId: "92424848474",
+  appId:             "1:92424848474:web:80612d9b22f0f391ba4463",
+};
+
+const firebaseApp = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+const db = getFirestore(firebaseApp);
 
 // ─── UPDATE THESE WHEN STRIPE IS READY ───────────────────────────────────────
 const STRIPE_MONTHLY_URL = "https://buy.stripe.com/PLACEHOLDER_MONTHLY";
@@ -6,9 +20,28 @@ const STRIPE_ANNUAL_URL  = "https://buy.stripe.com/PLACEHOLDER_ANNUAL";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function PaywallModule({ userData }) {
-  const [hover, setHover] = useState(null);
+  const [hover, setHover]       = useState(null);
+  const [pricing, setPricing]   = useState(null);
+  const [loading, setLoading]   = useState(true);
 
   const name = userData?.name || "there";
+
+  useEffect(() => {
+    const ref = doc(db, "config", "pricing");
+    const unsub = onSnapshot(ref, (snap) => {
+      setPricing(snap.exists() ? snap.data() : {});
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  const hasMonthly = !loading && pricing?.monthly_price != null;
+  const hasAnnual  = !loading && pricing?.annual_price  != null;
+
+  const monthlyPrice = pricing?.monthly_price ? `$${pricing.monthly_price}` : "$7.99";
+  const monthlyNote  = pricing?.monthly_note  || "Cancel anytime";
+  const annualPrice  = pricing?.annual_price  ? `$${pricing.annual_price}`  : "$39.99";
+  const annualNote   = pricing?.annual_note   || "Save 58% — just $3.33/mo";
 
   return (
     <div style={{
@@ -19,7 +52,7 @@ export default function PaywallModule({ userData }) {
     }}>
       {/* Logo */}
       <div style={{marginBottom:8}}>
-        <span style={{fontSize:36}}>🇪��</span>
+        <span style={{fontSize:36}}>🇪🇸</span>
       </div>
       <h1 style={{
         color:"#f0e6d3", fontSize:32, fontWeight:800,
@@ -45,37 +78,41 @@ export default function PaywallModule({ userData }) {
         </p>
       </div>
 
-      {/* Pricing cards */}
-      <div style={{
-        display:"flex", gap:16, flexWrap:"wrap",
-        justifyContent:"center", marginBottom:24,
-      }}>
-        {/* Annual — Best Value */}
-        <PricingCard
-          badge="Best Value"
-          title="Annual"
-          price="$39.99"
-          period="/ year"
-          note="Save 58% — just $3.33/mo"
-          url={STRIPE_ANNUAL_URL}
-          highlight={true}
-          hover={hover === "annual"}
-          onHover={setHover}
-          id="annual"
-        />
-        {/* Monthly */}
-        <PricingCard
-          title="Monthly"
-          price="$7.99"
-          period="/ month"
-          note="Cancel anytime"
-          url={STRIPE_MONTHLY_URL}
-          highlight={false}
-          hover={hover === "monthly"}
-          onHover={setHover}
-          id="monthly"
-        />
-      </div>
+      {/* Pricing cards — only render when not loading */}
+      {!loading && (hasAnnual || hasMonthly) && (
+        <div style={{
+          display:"flex", gap:16, flexWrap:"wrap",
+          justifyContent:"center", marginBottom:24,
+        }}>
+          {hasAnnual && (
+            <PricingCard
+              badge="Best Value"
+              title="Annual"
+              price={annualPrice}
+              period="/ year"
+              note={annualNote}
+              url={STRIPE_ANNUAL_URL}
+              highlight={true}
+              hover={hover === "annual"}
+              onHover={setHover}
+              id="annual"
+            />
+          )}
+          {hasMonthly && (
+            <PricingCard
+              title="Monthly"
+              price={monthlyPrice}
+              period="/ month"
+              note={monthlyNote}
+              url={STRIPE_MONTHLY_URL}
+              highlight={false}
+              hover={hover === "monthly"}
+              onHover={setHover}
+              id="monthly"
+            />
+          )}
+        </div>
+      )}
 
       {/* Features */}
       <div style={{
