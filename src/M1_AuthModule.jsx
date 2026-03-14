@@ -4,11 +4,16 @@ import { getAuth, onAuthStateChanged,
          signInWithEmailAndPassword,
          createUserWithEmailAndPassword,
          sendPasswordResetEmail,
+         sendEmailVerification,
+         reauthenticateWithCredential,
+         EmailAuthProvider,
+         updatePassword,
+         deleteUser,
          updateProfile, signOut }          from "firebase/auth";
 import { getFirestore, doc, getDoc,
-         setDoc, onSnapshot, serverTimestamp }         from "firebase/firestore";
+         setDoc, deleteDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
-const TERMS_URL = "https://firebasestorage.googleapis.com/v0/b/habla-espanyol.firebasestorage.app/o/Habla_Terms_of_Service.pdf?alt=media&token=0ca6ca67-66ab-45dd-8bd8-a00f47578d06";
+const TERMS_URL   = "https://firebasestorage.googleapis.com/v0/b/habla-espanyol.firebasestorage.app/o/Habla_Terms_of_Service.pdf?alt=media&token=0ca6ca67-66ab-45dd-8bd8-a00f47578d06";
 const PRIVACY_URL = "https://firebasestorage.googleapis.com/v0/b/habla-espanyol.firebasestorage.app/o/Habla_Privacy_Policy.pdf?alt=media&token=3582199b-c6b6-4f3d-8f81-8963ad60980f";
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0",
@@ -28,6 +33,41 @@ const generateSessionToken = () => `${Date.now()}-${Math.random().toString(36).s
 
 export const AuthContext = createContext(null);
 export const useAuth    = () => useContext(AuthContext);
+
+// ---------- Password strength ----------
+export function passwordStrength(pw) {
+  const checks = {
+    length:  pw.length >= 8,
+    upper:   /[A-Z]/.test(pw),
+    number:  /[0-9]/.test(pw),
+    special: /[^A-Za-z0-9]/.test(pw),
+  };
+  const score = Object.values(checks).filter(Boolean).length;
+  return { checks, score };
+}
+
+function StrengthBar({ pw }) {
+  if (!pw) return null;
+  const { score } = passwordStrength(pw);
+  const labels = ["", "Weak", "Fair", "Good", "Strong"];
+  const colors = ["", "#ef4444", "#f97316", "#eab308", "#22c55e"];
+  return (
+    <div style={{ marginTop: 6, marginBottom: 2 }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} style={{
+            flex: 1, height: 3, borderRadius: 99,
+            background: i <= score ? colors[score] : "#1a1a26",
+            transition: "background 0.25s",
+          }} />
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: colors[score] || "#3a3a4a", fontFamily: "sans-serif" }}>
+        {score > 0 && labels[score]}
+      </div>
+    </div>
+  );
+}
 
 async function fetchOrCreateUserDoc(firebaseUser) {
   const ref  = doc(db, "users", firebaseUser.uid);
@@ -99,8 +139,48 @@ export default function AuthModule({ onReady }) {
     if (snap.exists()) setUserData(snap.data());
   }, [user]);
 
-  const handleSignOut = useCallback(() => { localStorage.removeItem(SESSION_KEY); return signOut(auth); }, []);
-  const controls = { signOut: handleSignOut, refreshUserData };
+  const handleSignOut = useCallback(() => {
+    localStorage.removeItem(SESSION_KEY);
+    return signOut(auth);
+  }, []);
+
+  const controls = {
+    signOut: handleSignOut,
+    refreshUserData,
+
+    resendVerification: async () => {
+      if (!user) throw new Error("Not signed in");
+      await sendEmailVerification(user);
+    },
+
+    reloadUser: async () => {
+      if (!user) return;
+      await user.reload();
+      setUser(getAuth(firebaseApp).currentUser);
+    },
+
+    updateDisplayName: async (newName) => {
+      if (!user) throw new Error("Not signed in");
+      await updateProfile(user, { displayName: newName.trim() });
+      await setDoc(doc(db, "users", user.uid), { name: newName.trim() }, { merge: true });
+      await refreshUserData();
+    },
+
+    updateUserPassword: async (currentPw, newPw) => {
+      if (!user) throw new Error("Not signed in");
+      const cred = EmailAuthProvider.credential(user.email, currentPw);
+      await reauthenticateWithCredential(user, cred);
+      await updatePassword(user, newPw);
+    },
+
+    deleteAccount: async (currentPw) => {
+      if (!user) throw new Error("Not signed in");
+      const cred = EmailAuthProvider.credential(user.email, currentPw);
+      await reauthenticateWithCredential(user, cred);
+      await deleteDoc(doc(db, "users", user.uid));
+      await deleteUser(user);
+    },
+  };
 
   if (phase === "loading") return <SplashScreen />;
   if (phase === "ready") return (
@@ -127,7 +207,6 @@ function AuthWall({ auth }) {
         {screen === "login"  && <LoginForm  auth={auth} go={setScreen} />}
         {screen === "signup" && <SignupForm auth={auth} go={setScreen} />}
         {screen === "forgot" && <ForgotForm auth={auth} go={setScreen} />}
-        <Footer />
       </div>
     </div>
   );
@@ -147,8 +226,8 @@ function LoginForm({ auth, go }) {
   };
   return (
     <form onSubmit={submit} style={css.form} noValidate>
-      <TextField label="Email"    type="email" value={email} set={setEmail} placeholder="you@example.com" />
-      <PwField   label="Password" value={pw}   set={setPw}   show={show} toggle={() => setShow(v => !v)} />
+      <TextField label="Email"    type="email"    value={email} set={setEmail} placeholder="you@example.com" autoComplete="email" />
+      <PwField   label="Password" value={pw}      set={setPw}   show={show} toggle={() => setShow(v => !v)} autoComplete="current-password" />
       {err && <ErrBox msg={err} />}
       <PrimaryBtn busy={busy} label="Sign In" />
       <GhostBtn label="Forgot password?" onClick={() => go("forgot")} />
@@ -159,31 +238,69 @@ function LoginForm({ auth, go }) {
 }
 
 function SignupForm({ auth, go }) {
-  const [name,  setName]  = useState("");
-  const [email, setEmail] = useState("");
-  const [pw,    setPw]    = useState("");
-  const [show,  setShow]  = useState(false);
-  const [busy,  setBusy]  = useState(false);
-  const [err,   setErr]   = useState("");
-  const [agreed, setAgreed] = useState(false);
+  const [name,       setName]       = useState("");
+  const [email,      setEmail]      = useState("");
+  const [pw,         setPw]         = useState("");
+  const [pwConfirm,  setPwConfirm]  = useState("");
+  const [show,       setShow]       = useState(false);
+  const [showC,      setShowC]      = useState(false);
+  const [busy,       setBusy]       = useState(false);
+  const [err,        setErr]        = useState("");
+  const [agreed,     setAgreed]     = useState(false);
+  const [verifySent, setVerifySent] = useState(false);
+
   const submit = async (e) => {
     e.preventDefault(); setErr("");
-    if (!agreed) { setErr("Please accept the Terms of Service and Privacy Policy."); return; }
-    if (!name.trim())  { setErr("Please enter your name."); return; }
-    if (pw.length < 6) { setErr("Password must be at least 6 characters."); return; }
+    if (!agreed)           { setErr("Please accept the Terms of Service and Privacy Policy."); return; }
+    if (!name.trim())      { setErr("Please enter your name."); return; }
+    const { score, checks } = passwordStrength(pw);
+    if (!checks.length)    { setErr("Password must be at least 8 characters."); return; }
+    if (!checks.upper)     { setErr("Password must contain at least one uppercase letter."); return; }
+    if (!checks.number)    { setErr("Password must contain at least one number."); return; }
+    if (!checks.special)   { setErr("Password must contain at least one special character (!@#$…)."); return; }
+    if (pw !== pwConfirm)  { setErr("Passwords do not match."); return; }
     setBusy(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
       await updateProfile(cred.user, { displayName: name.trim() });
+      await sendEmailVerification(cred.user);
+      setVerifySent(true);
     } catch (ex) { setErr(friendlyErr(ex.code)); }
     finally      { setBusy(false); }
   };
+
+  if (verifySent) return (
+    <div style={css.form}>
+      <div style={css.successBox}>
+        <div style={{ fontSize: 28, marginBottom: 8 }}>📬</div>
+        <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 4 }}>Verify your email</div>
+        <div style={{ fontSize: 13, color: "#6b6560", lineHeight: 1.6 }}>
+          We sent a verification link to <strong style={{ color: "#c8b896" }}>{email}</strong>.<br />
+          Click the link in that email, then come back here to continue.
+        </div>
+      </div>
+      <p style={{ fontSize: 12, color: "#4a4540", textAlign: "center", fontFamily: "sans-serif", margin: "8px 0" }}>
+        Already verified?{" "}
+        <button type="button" onClick={() => window.location.reload()}
+          style={{ background: "none", border: "none", color: "#c8956c", cursor: "pointer", fontSize: 12, padding: 0, textDecoration: "underline" }}>
+          Continue to app
+        </button>
+      </p>
+      <GhostBtn label="Back to sign in" onClick={() => go("login")} />
+    </div>
+  );
+
   return (
     <form onSubmit={submit} style={css.form} noValidate>
-      <TextField label="Your name" type="text"  value={name}  set={setName}  placeholder="Maria Garcia" />
-      <TextField label="Email"     type="email" value={email} set={setEmail} placeholder="you@example.com" />
+      <TextField label="Your name" type="text"  value={name}  set={setName}  placeholder="Maria Garcia"   autoComplete="name" />
+      <TextField label="Email"     type="email" value={email} set={setEmail} placeholder="you@example.com" autoComplete="email" />
       <PwField   label="Password"  value={pw}   set={setPw}   show={show}
-                 toggle={() => setShow(v => !v)} hint="Minimum 6 characters" />
+                 toggle={() => setShow(v => !v)} autoComplete="new-password"
+                 hint="8+ characters, uppercase, number, special character">
+        <StrengthBar pw={pw} />
+      </PwField>
+      <PwField   label="Confirm Password" value={pwConfirm} set={setPwConfirm} show={showC}
+                 toggle={() => setShowC(v => !v)} autoComplete="new-password" />
       {err && <ErrBox msg={err} />}
       <AgreeCheckbox agreed={agreed} setAgreed={setAgreed} />
       <PrimaryBtn busy={busy} label="Create Account" />
@@ -222,7 +339,7 @@ function ForgotForm({ auth, go }) {
       <p style={{ margin: "0 0 18px", fontSize: 13.5, color: "#6b6560", fontFamily: "sans-serif", lineHeight: 1.65 }}>
         Enter your email and we will send a link to reset your password.
       </p>
-      <TextField label="Email" type="email" value={email} set={setEmail} placeholder="you@example.com" />
+      <TextField label="Email" type="email" value={email} set={setEmail} placeholder="you@example.com" autoComplete="email" />
       {err && <ErrBox msg={err} />}
       <PrimaryBtn busy={busy} label="Send Reset Link" />
       <GhostBtn label="Back to sign in" onClick={() => go("login")} />
@@ -243,47 +360,46 @@ function SplashScreen() {
 
 const Logo      = () => <div style={css.logoRow}><span style={{ fontSize: 28 }}>🇪🇸</span><span style={css.logoText}>Habla</span></div>;
 const Tagline   = ({ screen }) => <p style={css.tagline}>{{ login: "Welcome back. Bienvenido!", signup: "Start speaking Spanish today.", forgot: "Reset your password." }[screen]}</p>;
-const TextField = ({ label, type, value, set, placeholder }) => (
+const TextField = ({ label, type, value, set, placeholder, autoComplete }) => (
   <div style={css.field}>
     <label style={css.label}>{label}</label>
     <input type={type} value={value} onChange={e => set(e.target.value)} placeholder={placeholder}
-           style={css.input} className="h-input" autoComplete={type === "email" ? "email" : "name"} />
+           style={css.input} className="h-input" autoComplete={autoComplete} />
   </div>
 );
-const PwField = ({ label, value, set, show, toggle, hint }) => (
+const PwField = ({ label, value, set, show, toggle, hint, autoComplete, children }) => (
   <div style={css.field}>
     <label style={css.label}>{label}</label>
     <div style={{ position: "relative" }}>
       <input type={show ? "text" : "password"} value={value} onChange={e => set(e.target.value)}
-             placeholder="........" style={{ ...css.input, paddingRight: 44 }} className="h-input" autoComplete="current-password" />
+             placeholder="........" style={{ ...css.input, paddingRight: 44 }} className="h-input" autoComplete={autoComplete} />
       <button type="button" onClick={toggle} style={css.eye} tabIndex={-1}>{show ? "hide" : "show"}</button>
     </div>
+    {children}
     {hint && <div style={css.hint}>{hint}</div>}
   </div>
 );
-const PrimaryBtn = ({ busy, label }) => (
+const PrimaryBtn    = ({ busy, label }) => (
   <button type="submit" disabled={busy} style={css.primaryBtn} className="h-btn">
     {busy ? <span className="h-spin" style={css.spinner} /> : label}
   </button>
 );
-const GhostBtn   = ({ label, onClick }) => <button type="button" onClick={onClick} style={css.ghostBtn}>{label}</button>;
-const Divider    = () => <div style={css.divRow}><div style={css.divLine}/><span style={css.divLabel}>or</span><div style={css.divLine}/></div>;
-const SwitchRow  = ({ text, link, onClick }) => <p style={css.switchRow}>{text}{" "}<button type="button" onClick={onClick} style={css.switchLink}>{link}</button></p>;
-const TrialBadge = () => <div style={css.trialBadge}>10-day free trial, no credit card required</div>;
+const GhostBtn      = ({ label, onClick }) => <button type="button" onClick={onClick} style={css.ghostBtn}>{label}</button>;
+const Divider       = () => <div style={css.divRow}><div style={css.divLine}/><span style={css.divLabel}>or</span><div style={css.divLine}/></div>;
+const SwitchRow     = ({ text, link, onClick }) => <p style={css.switchRow}>{text}{" "}<button type="button" onClick={onClick} style={css.switchLink}>{link}</button></p>;
 const AgreeCheckbox = ({ agreed, setAgreed }) => (
   <div style={{ display:"flex", alignItems:"flex-start", gap:10, margin:"4px 0 10px", fontFamily:"sans-serif" }}>
     <input type="checkbox" id="agree" checked={agreed} onChange={e => setAgreed(e.target.checked)}
       style={{ marginTop:3, accentColor:"#c8956c", cursor:"pointer", flexShrink:0 }} />
     <label htmlFor="agree" style={{ fontSize:12, color:"#6b6560", lineHeight:1.6, cursor:"pointer" }}>
       I agree to the{" "}
-      <a href={TERMS_URL} target="_blank" rel="noreferrer" style={{ color:"#c8956c" }}>Terms of Service</a>
+      <a href={TERMS_URL}   target="_blank" rel="noreferrer" style={{ color:"#c8956c" }}>Terms of Service</a>
       {" "}and{" "}
       <a href={PRIVACY_URL} target="_blank" rel="noreferrer" style={{ color:"#c8956c" }}>Privacy Policy</a>
     </label>
   </div>
 );
-const ErrBox     = ({ msg }) => <div style={css.errorBox}><span>!</span><span>{msg}</span></div>;
-const Footer     = () => <p style={css.footer}>By continuing you agree to our <a href="#" style={css.footerLink}>Terms</a> and <a href="#" style={css.footerLink}>Privacy Policy</a></p>;
+const ErrBox = ({ msg }) => <div style={css.errorBox}><span>!</span><span>{msg}</span></div>;
 
 const friendlyErr = (code) => ({
   "auth/invalid-email":          "Please enter a valid email address.",
@@ -291,10 +407,11 @@ const friendlyErr = (code) => ({
   "auth/wrong-password":         "Incorrect password. Try again.",
   "auth/invalid-credential":     "Incorrect email or password.",
   "auth/email-already-in-use":   "An account with that email already exists.",
-  "auth/weak-password":          "Password must be at least 6 characters.",
+  "auth/weak-password":          "Password must be at least 8 characters.",
   "auth/too-many-requests":      "Too many attempts. Please wait and try again.",
   "auth/network-request-failed": "Network error. Check your connection.",
   "auth/user-disabled":          "This account has been disabled.",
+  "auth/requires-recent-login":  "Please sign out and sign back in, then try again.",
 })[code] ?? "Something went wrong. Please try again.";
 
 const css = {
@@ -312,7 +429,6 @@ const css = {
   eye:        { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#555", padding: 0 },
   primaryBtn: { marginTop: 6, width: "100%", padding: "13px", background: "linear-gradient(135deg, #c8956c, #a87040)", border: "none", borderRadius: 12, color: "#0e0e14", fontSize: 15, fontWeight: 800, fontFamily: "Georgia, serif", cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 48 },
   ghostBtn:   { background: "none", border: "none", color: "#4a4540", cursor: "pointer", fontSize: 13, fontFamily: "sans-serif", padding: "10px 0 0", textDecoration: "underline", textAlign: "left" },
-  trialBadge: { marginTop: 11, textAlign: "center", fontSize: 12, color: "#7a6a5a", fontFamily: "sans-serif", background: "#c8956c08", border: "1px solid #c8956c1e", borderRadius: 8, padding: "8px 12px" },
   divRow:     { display: "flex", alignItems: "center", gap: 12, margin: "18px 0" },
   divLine:    { flex: 1, height: 1, background: "#1a1a26" },
   divLabel:   { fontSize: 10, color: "#2a2a38", fontFamily: "sans-serif", letterSpacing: "1.2px", textTransform: "uppercase" },
@@ -321,8 +437,6 @@ const css = {
   errorBox:   { background: "#1e0e0e", border: "1px solid #c86c6c33", borderRadius: 9, padding: "10px 14px", fontSize: 13, color: "#f87171", fontFamily: "sans-serif", display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6, lineHeight: 1.5 },
   successBox: { background: "#0a1a12", border: "1px solid #22c55e2a", borderRadius: 12, padding: "22px 18px", textAlign: "center", fontFamily: "sans-serif", marginBottom: 8 },
   spinner:    { display: "inline-block", width: 17, height: 17, border: "2px solid #0e0e1450", borderTopColor: "#0e0e14", borderRadius: "50%" },
-  footer:     { margin: "20px 0 0", fontSize: 11, color: "#252530", textAlign: "center", fontFamily: "sans-serif" },
-  footerLink: { color: "#353545" },
 };
 
 const globalCSS = `

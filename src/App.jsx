@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { getAuth, confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
-import AuthModule from "./M1_AuthModule";
+import AuthModule, { passwordStrength } from "./M1_AuthModule";
 import TrialModule from "./M2_TrialModule";
 import PaywallModule from "./M3_PaywallModule";
 import SpanishVoice from "./SpanishVoice";
@@ -28,8 +28,12 @@ function ResetPasswordScreen({ oobCode }) {
   const handleReset = async (e) => {
     e.preventDefault();
     setErr("");
-    if (pw.length < 6) { setErr("Password must be at least 6 characters."); return; }
-    if (pw !== pw2)    { setErr("Passwords do not match."); return; }
+    const { checks } = passwordStrength(pw);
+    if (!checks.length)  { setErr("Password must be at least 8 characters."); return; }
+    if (!checks.upper)   { setErr("Password must contain at least one uppercase letter."); return; }
+    if (!checks.number)  { setErr("Password must contain at least one number."); return; }
+    if (!checks.special) { setErr("Password must contain at least one special character."); return; }
+    if (pw !== pw2)      { setErr("Passwords do not match."); return; }
     setBusy(true);
     try {
       await verifyPasswordResetCode(auth, oobCode);
@@ -72,7 +76,7 @@ function ResetPasswordScreen({ oobCode }) {
             {err && <div style={s.err}>{err}</div>}
             <label style={s.label}>New Password</label>
             <input type="password" value={pw} onChange={e => setPw(e.target.value)}
-                   placeholder="Min 6 characters" style={s.input} autoComplete="new-password" />
+                   placeholder="Min 8 chars, uppercase, number, symbol" style={s.input} autoComplete="new-password" />
             <label style={s.label}>Confirm Password</label>
             <input type="password" value={pw2} onChange={e => setPw2(e.target.value)}
                    placeholder="Repeat password" style={s.input} autoComplete="new-password" />
