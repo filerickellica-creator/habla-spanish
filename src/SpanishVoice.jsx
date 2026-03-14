@@ -12,6 +12,7 @@ const SCENARIOS = [
   { id: "directions", emoji: "🗺️", label: "Direcciones", color: "#6cb4c8", prompt: "You are a helpful local on the streets of Barcelona giving directions to a tourist. Use street vocabulary and helpful phrases. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "restaurant", emoji: "🍽️", label: "Restaurante", color: "#c86c6c", prompt: "You are an enthusiastic waiter at a traditional Spanish restaurant. Describe the menu and take orders. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "amigo", emoji: "👋", label: "Amigo", color: "#a06cc8", prompt: "You are a fun, casual Spanish-speaking friend catching up. Talk about weekend plans and everyday life. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "transporte", emoji: "🚌", label: "Transporte", color: "#6c8fc8", prompt: "You are a helpful transit worker at a bus/metro station in Madrid. Help passengers with routes, schedules, and tickets. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
 ];
 
 const LEVELS = [
@@ -117,6 +118,7 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
   const [hint, setHint] = useState("");
   const [grammarLoading, setGrammarLoading] = useState(false);
   const [corrections, setCorrections] = useState({});
+  const [lastAiSpoken, setLastAiSpoken] = useState("");
 
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
@@ -141,11 +143,11 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
     synthRef.current.cancel();
   };
 
-  const speak = useCallback((text) => {
+  const speakAtRate = useCallback((text, rate = 0.92) => {
     synthRef.current.cancel();
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = "es-ES";
-    utter.rate = 0.92;
+    utter.rate = rate;
     utter.pitch = 1.05;
     const voices = synthRef.current.getVoices();
     const spanishVoice = voices.find(v => v.lang.startsWith("es"));
@@ -155,6 +157,8 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
     utter.onerror = () => setStatus("idle");
     synthRef.current.speak(utter);
   }, []);
+
+  const speak = useCallback((text) => speakAtRate(text, 0.92), [speakAtRate]);
 
   const callClaude = useCallback(async (userText, currentMessages, scen, lvl) => {
     setStatus("thinking");
@@ -172,7 +176,9 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
       setAiText(reply);
       const updated = [...currentMessages, { role: "user", text: userText }, { role: "ai", text: reply }];
       setMessages(updated);
-      speak(extractSpanishOnly(reply));
+      const spokenText = extractSpanishOnly(reply);
+      setLastAiSpoken(spokenText);
+      speak(spokenText);
       return updated;
     } catch {
       setError("Connection error. Tap the mic to try again.");
@@ -259,7 +265,9 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
       const reply = data.content?.find(b => b.type === "text")?.text || "¡Hola!";
       setAiText(reply);
       setMessages([{ role: "ai", text: reply }]);
-      speak(extractSpanishOnly(reply));
+      const spokenText = extractSpanishOnly(reply);
+      setLastAiSpoken(spokenText);
+      speak(spokenText);
     } catch {
       setError("Connection error.");
       setStatus("idle");
@@ -479,9 +487,13 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
         </div>
         {isListening && <Waveform active={true} color={accentColor} />}
         {isSpeaking && <Waveform active={true} color={accentColor} />}
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <button onClick={getHint} disabled={hintLoading || isThinking || isSpeaking || messages.length === 0}
             style={{ width: 48, height: 48, borderRadius: "50%", background: hint ? "#facc1522" : "#12121a", border: `1.5px solid ${hint ? "#facc1566" : "#2a2a42"}`, color: hint ? "#facc15" : "#3a3a4a", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: messages.length === 0 ? 0.3 : 1 }}>💡</button>
+          <button onClick={() => lastAiSpoken && speakAtRate(lastAiSpoken, 0.92)} disabled={isThinking || isListening || !lastAiSpoken}
+            title="Repeat" style={{ width: 44, height: 44, borderRadius: "50%", background: "#12121a", border: "1.5px solid #2a2a42", color: "#3a3a4a", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: !lastAiSpoken ? 0.3 : 1 }}>🔁</button>
+          <button onClick={() => lastAiSpoken && speakAtRate(lastAiSpoken, 0.55)} disabled={isThinking || isListening || !lastAiSpoken}
+            title="Slow" style={{ width: 44, height: 44, borderRadius: "50%", background: "#12121a", border: "1.5px solid #2a2a42", color: "#3a3a4a", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: !lastAiSpoken ? 0.3 : 1 }}>🐢</button>
           <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {isListening && [1, 2].map(r => (
               <div key={r} style={{ position: "absolute", borderRadius: "50%", width: 80, height: 80, border: `2px solid ${accentColor}`, animation: `ripple 1.5s ease ${r * 0.5}s infinite`, pointerEvents: "none" }} />
