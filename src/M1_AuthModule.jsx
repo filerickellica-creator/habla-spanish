@@ -234,14 +234,14 @@ function SplashScreen() {
   return (
     <div style={{ ...css.root, flexDirection: "column", gap: 14 }}>
       <style>{globalCSS}</style>
-      <span style={{ fontSize: 36 }}>🇪🇸</span>
+      <svg width="44" height="44" viewBox="0 0 92 92" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 C4 8 0 12 0 18 L0 54 C0 60 4 64 10 64 L28 64 L22 80 L40 64 L82 64 C88 64 92 60 92 54 L92 18 C92 12 88 8 82 8 Z" fill="#c8956c"/><rect x="14" y="30" width="8" height="16" rx="4" fill="#2a1a0a"/><rect x="26" y="22" width="8" height="32" rx="4" fill="#2a1a0a"/><rect x="38" y="16" width="8" height="40" rx="4" fill="#2a1a0a"/><rect x="50" y="22" width="8" height="32" rx="4" fill="#2a1a0a"/><rect x="62" y="28" width="8" height="16" rx="4" fill="#2a1a0a"/></svg>
       <span style={css.logoText}>Habla</span>
       <span className="h-spin" style={css.spinner} />
     </div>
   );
 }
 
-const Logo      = () => <div style={css.logoRow}><span style={{ fontSize: 28 }}>🇪🇸</span><span style={css.logoText}>Habla</span></div>;
+const Logo      = () => <div style={css.logoRow}><svg width="32" height="32" viewBox="0 0 92 92" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 C4 8 0 12 0 18 L0 54 C0 60 4 64 10 64 L28 64 L22 80 L40 64 L82 64 C88 64 92 60 92 54 L92 18 C92 12 88 8 82 8 Z" fill="#c8956c"/><rect x="14" y="30" width="8" height="16" rx="4" fill="#2a1a0a"/><rect x="26" y="22" width="8" height="32" rx="4" fill="#2a1a0a"/><rect x="38" y="16" width="8" height="40" rx="4" fill="#2a1a0a"/><rect x="50" y="22" width="8" height="32" rx="4" fill="#2a1a0a"/><rect x="62" y="28" width="8" height="16" rx="4" fill="#2a1a0a"/></svg><span style={css.logoText}>Habla</span></div>;
 const Tagline   = ({ screen }) => <p style={css.tagline}>{{ login: "Welcome back. Bienvenido!", signup: "Start speaking Spanish today.", forgot: "Reset your password." }[screen]}</p>;
 const TextField = ({ label, type, value, set, placeholder }) => (
   <div style={css.field}>

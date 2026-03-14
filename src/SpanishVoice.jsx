@@ -63,7 +63,7 @@ function ApiKeyScreen({ onSave }) {
     }}>
       <style>{`@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } } * { box-sizing: border-box; }`}</style>
       <div style={{ width: "100%", maxWidth: 400, animation: "fadeUp 0.5s ease" }}>
-        <div style={{ fontSize: 44, marginBottom: 12, textAlign: "center" }}>🇪🇸</div>
+        <div style={{ marginBottom: 12, textAlign: "center" }}><svg width="52" height="52" viewBox="0 0 92 92" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 C4 8 0 12 0 18 L0 54 C0 60 4 64 10 64 L28 64 L22 80 L40 64 L82 64 C88 64 92 60 92 54 L92 18 C92 12 88 8 82 8 Z" fill="#c8956c"/><rect x="14" y="30" width="8" height="16" rx="4" fill="#2a1a0a"/><rect x="26" y="22" width="8" height="32" rx="4" fill="#2a1a0a"/><rect x="38" y="16" width="8" height="40" rx="4" fill="#2a1a0a"/><rect x="50" y="22" width="8" height="32" rx="4" fill="#2a1a0a"/><rect x="62" y="28" width="8" height="16" rx="4" fill="#2a1a0a"/></svg></div>
         <h1 style={{ fontFamily: "Georgia, serif", fontSize: 32, fontWeight: 900, textAlign: "center", margin: "0 0 8px", color: "#e8e0d5" }}>Habla</h1>
         <p style={{ textAlign: "center", color: "#6b6560", fontSize: 13, marginBottom: 32, letterSpacing: 2, textTransform: "uppercase" }}>Voice Spanish Practice</p>
 
