@@ -302,9 +302,12 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
       <div style={{ width: "100%", maxWidth: 420, padding: "52px 24px 0", animation: "fadeUp 0.6s ease" }}>
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <div>
-              <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, margin: "0 0 4px", color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
-              <p style={{ margin: 0, fontSize: 13, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Speak Spanish. Live it.</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 36 }}>🇪🇸</span>
+              <div>
+                <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, margin: "0 0 4px", color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
+                <p style={{ margin: 0, fontSize: 13, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Speak Spanish. Live it.</p>
+              </div>
             </div>
             <button onClick={() => setShowAccount(true)} style={{
               background: "none", border: "1px solid #2a2a38", color: "#3a3a4a",
@@ -337,9 +340,6 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
           </div>
         </div>
         <div>
-        {/* Translator */}
-        <TranslatorModule />
-
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {SCENARIOS.map((s, i) => (
@@ -357,6 +357,8 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
             ))}
           </div>
         </div>
+        {/* Translator */}
+        <TranslatorModule />
       </div>
         <button onClick={() => setScreen("vocab")} style={{ marginTop: 20, width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#12121a", color: "#8a8075", cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 12 }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#c4b5fd"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.color = "#8a8075"; }}>
           <span style={{ fontSize: 22 }}>📚</span>
