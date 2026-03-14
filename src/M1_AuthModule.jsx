@@ -246,14 +246,13 @@ function SignupForm({ auth, go }) {
   const [showC,      setShowC]      = useState(false);
   const [busy,       setBusy]       = useState(false);
   const [err,        setErr]        = useState("");
-  const [agreed,     setAgreed]     = useState(false);
-  const [verifySent, setVerifySent] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault(); setErr("");
     if (!agreed)           { setErr("Please accept the Terms of Service and Privacy Policy."); return; }
     if (!name.trim())      { setErr("Please enter your name."); return; }
-    const { score, checks } = passwordStrength(pw);
+    const { checks } = passwordStrength(pw);
     if (!checks.length)    { setErr("Password must be at least 8 characters."); return; }
     if (!checks.upper)     { setErr("Password must contain at least one uppercase letter."); return; }
     if (!checks.number)    { setErr("Password must contain at least one number."); return; }
@@ -264,31 +263,11 @@ function SignupForm({ auth, go }) {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
       await updateProfile(cred.user, { displayName: name.trim() });
       await sendEmailVerification(cred.user);
-      setVerifySent(true);
+      // onAuthStateChanged in AuthModule will fire and transition to the app;
+      // the EmailVerifiedBadge in M5_AccountModule will remind the user to verify.
     } catch (ex) { setErr(friendlyErr(ex.code)); }
     finally      { setBusy(false); }
   };
-
-  if (verifySent) return (
-    <div style={css.form}>
-      <div style={css.successBox}>
-        <div style={{ fontSize: 28, marginBottom: 8 }}>📬</div>
-        <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 4 }}>Verify your email</div>
-        <div style={{ fontSize: 13, color: "#6b6560", lineHeight: 1.6 }}>
-          We sent a verification link to <strong style={{ color: "#c8b896" }}>{email}</strong>.<br />
-          Click the link in that email, then come back here to continue.
-        </div>
-      </div>
-      <p style={{ fontSize: 12, color: "#4a4540", textAlign: "center", fontFamily: "sans-serif", margin: "8px 0" }}>
-        Already verified?{" "}
-        <button type="button" onClick={() => window.location.reload()}
-          style={{ background: "none", border: "none", color: "#c8956c", cursor: "pointer", fontSize: 12, padding: 0, textDecoration: "underline" }}>
-          Continue to app
-        </button>
-      </p>
-      <GhostBtn label="Back to sign in" onClick={() => go("login")} />
-    </div>
-  );
 
   return (
     <form onSubmit={submit} style={css.form} noValidate>
@@ -441,8 +420,8 @@ const css = {
 
 const globalCSS = `
   * { box-sizing: border-box; }
-  .h-input:focus { border-color: #c8956c70 !important; box-shadow: 0 0 0 3px #c8956c0e !important; }
-  .h-input::placeholder { color: #252535 !important; }
+  .h-input:focus, .h-account-input:focus { border-color: #c8956c70 !important; box-shadow: 0 0 0 3px #c8956c0e !important; }
+  .h-input::placeholder, .h-account-input::placeholder { color: #252535 !important; }
   .h-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
   .h-btn:disabled { opacity: 0.65; cursor: not-allowed; }
   .h-spin { animation: hSpin 0.7s linear infinite; }
