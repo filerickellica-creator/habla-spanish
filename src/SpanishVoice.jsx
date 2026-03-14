@@ -101,7 +101,7 @@ function ApiKeyScreen({ onSave }) {
   );
 }
 
-export default function SpanishVoice({ user, userData, controls }) {
+export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
   const [screen, setScreen] = useState("home");
   const [scenario, setScenario] = useState(null);
   const [level, setLevel] = useState("beginner");
@@ -277,6 +277,7 @@ export default function SpanishVoice({ user, userData, controls }) {
 
 
   if (screen === "home") return (
+    <>
     <div style={{
       minHeight: "100vh", background: "#0e0e14", color: "#e8e0d5",
       fontFamily: "'Palatino Linotype', Georgia, serif",
@@ -292,21 +293,21 @@ export default function SpanishVoice({ user, userData, controls }) {
       `}</style>
       <div style={{ width: "100%", maxWidth: 420, padding: "52px 24px 0", animation: "fadeUp 0.6s ease" }}>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>🇪🇸</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <div>
+              <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, margin: "0 0 4px", color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
+              <p style={{ margin: 0, fontSize: 13, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Speak Spanish. Live it.</p>
+            </div>
             <button onClick={() => setShowAccount(true)} style={{
               background: "none", border: "1px solid #2a2a38", color: "#3a3a4a",
-              borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer",
-              marginTop: 8, transition: "all 0.2s",
+              borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer",
+              transition: "all 0.2s", flexShrink: 0,
             }}
               onMouseEnter={e => { e.currentTarget.style.color = "#a78bfa"; e.currentTarget.style.borderColor = "#a78bfa"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}
             >👤 Account</button>
-            <button onClick={() => controls && controls.signOut()} style={{ background: "none", border: "1px solid #2a2a38", color: "#3a3a4a", borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer", marginTop: 8, marginLeft: 6, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.borderColor = "#f87171"; }} onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}>🚪 Sign Out</button>
           </div>
-          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, margin: "0 0 6px", color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
-          <p style={{ margin: 0, fontSize: 13, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Voice Spanish Practice</p>
-          <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak naturally. Your AI conversation partner listens, responds in Spanish, and helps you improve.</p>
+          <p style={{ margin: "12px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak Spanish freely. I will listen and help you improve.</p>
         </div>
         {!supported && (
           <div style={{ background: "#2a1a1a", border: "1px solid #c86c6c", borderRadius: 12, padding: 16, marginBottom: 20, fontSize: 13, color: "#f87171", fontFamily: "sans-serif" }}>
@@ -354,6 +355,10 @@ export default function SpanishVoice({ user, userData, controls }) {
           <div><div style={{ fontWeight: 700, fontSize: 14 }}>Vocabulario</div><div style={{ fontSize: 12, marginTop: 2, opacity: 0.6 }}>500 words · 8 modules · flip cards</div></div>
         </button>
     </div>
+    {showAccount && user && (
+      <AccountModule user={user} userData={userData || { subscriptionStatus: "trial", name: user.email }} controls={controls} onClose={() => setShowAccount(false)} onSubscribe={onUpgrade} />
+    )}
+    </>
   );
 
   if (screen === "vocab") return (
@@ -494,7 +499,7 @@ export default function SpanishVoice({ user, userData, controls }) {
           {isListening ? "Release to send" : "Hold to speak"}
         </p>
       </div>
-      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={controls} onClose={() => setShowAccount(false)} />)}
+      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={controls} onClose={() => setShowAccount(false)} onSubscribe={onUpgrade} />)}
     </div>
   );
 }

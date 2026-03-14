@@ -107,7 +107,7 @@ export default function App() {
       }
       return (
         <TrialModule userData={userData} onExpired={() => setExpired(true)} onUpgrade={() => setExpired(true)}>
-          <SpanishVoice user={user} userData={userData} controls={controls} />
+          <SpanishVoice user={user} userData={userData} controls={controls} onUpgrade={() => setExpired(true)} />
         </TrialModule>
       );
     }} />
