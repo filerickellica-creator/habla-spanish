@@ -91,6 +91,8 @@ async function fetchOrCreateUserDoc(firebaseUser) {
   return { ...freshDoc, trialStartedAt: new Date() };
 }
 
+const SESSION_CONFLICT_KEY = "habla_session_conflict";
+
 export default function AuthModule({ onReady }) {
   const [phase,    setPhase]    = useState("loading");
   const [user,     setUser]     = useState(null);
@@ -110,6 +112,7 @@ export default function AuthModule({ onReady }) {
           await setDoc(userRef, { sessionToken: newToken }, { merge: true });
         } else if (localToken !== data.sessionToken) {
           localStorage.removeItem(SESSION_KEY);
+          sessionStorage.setItem(SESSION_CONFLICT_KEY, "1");
           await signOut(auth);
           return;
         }
@@ -121,6 +124,7 @@ export default function AuthModule({ onReady }) {
           const currentLocalToken = localStorage.getItem(SESSION_KEY);
           if (firestoreToken && currentLocalToken && firestoreToken !== currentLocalToken) {
             localStorage.removeItem(SESSION_KEY);
+            sessionStorage.setItem(SESSION_CONFLICT_KEY, "1");
             signOut(auth);
           }
         });
@@ -197,6 +201,10 @@ export default function AuthModule({ onReady }) {
 
 function AuthWall({ auth }) {
   const [screen, setScreen] = useState("login");
+  const sessionConflict = !!sessionStorage.getItem(SESSION_CONFLICT_KEY);
+
+  const clearConflict = () => sessionStorage.removeItem(SESSION_CONFLICT_KEY);
+
   return (
     <div style={css.root}>
       <style>{globalCSS}</style>
@@ -204,7 +212,13 @@ function AuthWall({ auth }) {
       <div style={css.card} key={screen}>
         <Logo />
         <Tagline screen={screen} />
-        {screen === "login"  && <LoginForm  auth={auth} go={setScreen} />}
+        {sessionConflict && screen === "login" && (
+          <div style={css.conflictBanner}>
+            You were signed in on another device, so this session was ended.
+            Please sign in again.
+          </div>
+        )}
+        {screen === "login"  && <LoginForm  auth={auth} go={setScreen} onLogin={clearConflict} />}
         {screen === "signup" && <SignupForm auth={auth} go={setScreen} />}
         {screen === "forgot" && <ForgotForm auth={auth} go={setScreen} />}
       </div>
@@ -212,7 +226,7 @@ function AuthWall({ auth }) {
   );
 }
 
-function LoginForm({ auth, go }) {
+function LoginForm({ auth, go, onLogin }) {
   const [email, setEmail] = useState("");
   const [pw,    setPw]    = useState("");
   const [show,  setShow]  = useState(false);
@@ -220,7 +234,7 @@ function LoginForm({ auth, go }) {
   const [err,   setErr]   = useState("");
   const submit = async (e) => {
     e.preventDefault(); setErr(""); setBusy(true);
-    try { await signInWithEmailAndPassword(auth, email.trim(), pw); }
+    try { await signInWithEmailAndPassword(auth, email.trim(), pw); onLogin?.(); }
     catch (ex) { setErr(friendlyErr(ex.code)); }
     finally    { setBusy(false); }
   };
@@ -413,6 +427,7 @@ const css = {
   divLabel:   { fontSize: 10, color: "#2a2a38", fontFamily: "sans-serif", letterSpacing: "1.2px", textTransform: "uppercase" },
   switchRow:  { margin: 0, fontSize: 13, color: "#4a4540", textAlign: "center", fontFamily: "sans-serif" },
   switchLink: { background: "none", border: "none", color: "#c8956c", cursor: "pointer", fontSize: 13, fontFamily: "sans-serif", padding: 0, textDecoration: "underline" },
+  conflictBanner: { background: "#1a1408", border: "1px solid #c8956c44", borderRadius: 10, padding: "11px 14px", fontSize: 12.5, color: "#c8a87a", fontFamily: "sans-serif", lineHeight: 1.55, marginBottom: 14 },
   errorBox:   { background: "#1e0e0e", border: "1px solid #c86c6c33", borderRadius: 9, padding: "10px 14px", fontSize: 13, color: "#f87171", fontFamily: "sans-serif", display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6, lineHeight: 1.5 },
   successBox: { background: "#0a1a12", border: "1px solid #22c55e2a", borderRadius: 12, padding: "22px 18px", textAlign: "center", fontFamily: "sans-serif", marginBottom: 8 },
   spinner:    { display: "inline-block", width: 17, height: 17, border: "2px solid #0e0e1450", borderTopColor: "#0e0e14", borderRadius: "50%" },
