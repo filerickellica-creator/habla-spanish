@@ -12,6 +12,7 @@ const SCENARIOS = [
   { id: "directions", emoji: "🗺️", label: "Direcciones", color: "#6cb4c8", prompt: "You are a helpful local on the streets of Barcelona giving directions to a tourist. Use street vocabulary and helpful phrases. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "restaurant", emoji: "🍽️", label: "Restaurante", color: "#c86c6c", prompt: "You are an enthusiastic waiter at a traditional Spanish restaurant. Describe the menu and take orders. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "amigo", emoji: "👋", label: "Amigo", color: "#a06cc8", prompt: "You are a fun, casual Spanish-speaking friend catching up. Talk about weekend plans and everyday life. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "interview", emoji: "💼", label: "Entrevista de Trabajo", color: "#c8a86c", prompt: "You are a professional interviewer at a Spanish company conducting a job interview. Ask thoughtful questions about experience, skills, and motivations. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
 ];
 
 const LEVELS = [
@@ -102,6 +103,7 @@ function ApiKeyScreen({ onSave }) {
 }
 
 export default function SpanishVoice({ user, userData, controls }) {
+  const isTrial = userData?.subscriptionStatus === "trial";
   const [screen, setScreen] = useState("home");
   const [scenario, setScenario] = useState(null);
   const [level, setLevel] = useState("beginner");
@@ -316,36 +318,66 @@ export default function SpanishVoice({ user, userData, controls }) {
         <div style={{ marginBottom: 28 }}>
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Level</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {LEVELS.map(l => (
-              <button key={l.id} onClick={() => setLevel(l.id)} style={{
-                padding: "12px 16px", borderRadius: 10, textAlign: "left",
-                border: `1.5px solid ${level === l.id ? "#c8956c" : "#1e1e2a"}`,
-                background: level === l.id ? "#c8956c18" : "#12121a",
-                color: level === l.id ? "#e8d5c0" : "#5a5555",
-                cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
-              }}>{l.label}</button>
-            ))}
+            {LEVELS.map(l => {
+              const locked = isTrial && l.id !== "beginner";
+              return (
+                <button key={l.id} onClick={() => locked ? setShowAccount(true) : setLevel(l.id)} style={{
+                  padding: "12px 16px", borderRadius: 10, textAlign: "left",
+                  border: `1.5px solid ${!locked && level === l.id ? "#c8956c" : "#1e1e2a"}`,
+                  background: !locked && level === l.id ? "#c8956c18" : "#12121a",
+                  color: locked ? "#3a3535" : level === l.id ? "#e8d5c0" : "#5a5555",
+                  cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  opacity: locked ? 0.5 : 1,
+                }}>
+                  <span>{l.label}</span>
+                  {locked && <span style={{ fontSize: 13 }}>🔒</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div>
         {/* Translator */}
-        <TranslatorModule />
+        {isTrial ? (
+          <div style={{ position: "relative", marginBottom: 14 }} onClick={() => setShowAccount(true)}>
+            <div style={{ opacity: 0.25, pointerEvents: "none" }}><TranslatorModule /></div>
+            <div style={{
+              position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", cursor: "pointer",
+              background: "rgba(14,14,20,0.45)", borderRadius: 14,
+            }}>
+              <span style={{ fontSize: 22 }}>🔒</span>
+              <span style={{ fontSize: 12, color: "#8a8075", marginTop: 6, fontFamily: "sans-serif" }}>Upgrade to unlock</span>
+            </div>
+          </div>
+        ) : (
+          <TranslatorModule />
+        )}
 
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {SCENARIOS.map((s, i) => (
-              <button key={s.id} onClick={() => startScenario(s)} disabled={!supported} style={{
-                padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
-                background: "#12121a", cursor: supported ? "pointer" : "not-allowed", textAlign: "left",
-                animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = "#12121a"; }}
-              >
-                <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
-              </button>
-            ))}
+            {SCENARIOS.map((s, i) => {
+              const locked = isTrial && s.id !== "cafe";
+              return (
+                <button key={s.id}
+                  onClick={() => locked ? setShowAccount(true) : startScenario(s)}
+                  disabled={!locked && !supported}
+                  style={{
+                    padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
+                    background: "#12121a", cursor: "pointer", textAlign: "left",
+                    animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
+                    opacity: locked ? 0.45 : 1, position: "relative",
+                  }}
+                  onMouseEnter={e => { if (!locked) { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; } }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = "#12121a"; }}
+                >
+                  <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
+                  {locked && <span style={{ position: "absolute", top: 10, right: 10, fontSize: 13 }}>🔒</span>}
+                </button>
+              );
+            })}
           </div>
         <button onClick={() => setScreen("vocab")} style={{ marginTop: 10, width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#12121a", color: "#8a8075", cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 12 }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#c4b5fd"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.color = "#8a8075"; }}>
           <span style={{ fontSize: 22 }}>📚</span>
