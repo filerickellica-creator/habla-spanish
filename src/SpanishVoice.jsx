@@ -12,6 +12,7 @@ const SCENARIOS = [
   { id: "directions", emoji: "🗺️", label: "Direcciones", color: "#6cb4c8", prompt: "You are a helpful local on the streets of Barcelona giving directions to a tourist. Use street vocabulary and helpful phrases. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "restaurant", emoji: "🍽️", label: "Restaurante", color: "#c86c6c", prompt: "You are an enthusiastic waiter at a traditional Spanish restaurant. Describe the menu and take orders. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "amigo", emoji: "👋", label: "Amigo", color: "#a06cc8", prompt: "You are a fun, casual Spanish-speaking friend catching up. Talk about weekend plans and everyday life. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "entrevista", emoji: "💼", label: "Entrevista de Trabajo", color: "#c8a83a", prompt: "You are a professional interviewer at a Spanish company conducting a job interview. Ask about the candidate's experience, skills, and goals. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
 ];
 
 const LEVELS = [
