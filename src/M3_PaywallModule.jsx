@@ -36,7 +36,7 @@ export default function PaywallModule({ userData, onClose }) {
               price: `$${d.monthly_price}`,
               period: "/mo",
               note: d.monthly_note || "",
-              stripeUrl: d.monthly_stripe_url || d.stripeUrl || "",
+              url: d.monthly_url || "",
               highlight: false,
             });
             if (d.annual_price) built.push({
@@ -45,7 +45,7 @@ export default function PaywallModule({ userData, onClose }) {
               price: `$${d.annual_price}`,
               period: "/yr",
               note: d.annual_note || "",
-              stripeUrl: d.annual_stripe_url || d.stripeUrl || "",
+              url: d.annual_url || "",
               highlight: true,
               badge: d.annual_badge || "Best Value",
             });
@@ -129,7 +129,7 @@ export default function PaywallModule({ userData, onClose }) {
               price={plan.price}
               period={plan.period}
               note={plan.note}
-              url={plan.stripeUrl}
+              url={plan.url}
               highlight={plan.highlight ?? false}
               hover={hover === plan.id}
               onHover={setHover}
@@ -157,7 +157,7 @@ export default function PaywallModule({ userData, onClose }) {
       </div>
 
       <p style={{color:"#3a3530", fontSize:11}}>
-        Secure payment via Stripe · Cancel anytime
+        Secure payment via Lemon Squeezy · Cancel anytime
       </p>
     </div>
   );
