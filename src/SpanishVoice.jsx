@@ -1,5 +1,6 @@
 import TranslatorModule from "./TranslatorModule";
 import VocabularyModules from "./VocabularyModules";
+import PaywallModule from "./M3_PaywallModule";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import AccountModule from "./M5_AccountModule";
@@ -109,6 +110,7 @@ export default function SpanishVoice({ user, userData, controls }) {
   const [messages, setMessages] = useState([]);
   const [status, setStatus] = useState("idle");
   const [showAccount, setShowAccount] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const isTrial = userData?.subscriptionStatus === "trial";
   const isLevelLocked = (lvlId) => isTrial && lvlId !== "beginner";
@@ -281,6 +283,9 @@ export default function SpanishVoice({ user, userData, controls }) {
 
   const accentColor = scenario?.color || "#c8956c";
 
+  if (showPaywall) return (
+    <PaywallModule userData={userData} onBack={() => setShowPaywall(false)} />
+  );
 
   if (screen === "home") return (
     <div style={{
@@ -389,6 +394,7 @@ export default function SpanishVoice({ user, userData, controls }) {
           <span style={{ fontSize: 22 }}>📚</span>
           <div><div style={{ fontWeight: 700, fontSize: 14 }}>Vocabulario</div><div style={{ fontSize: 12, marginTop: 2, opacity: 0.6 }}>500 words · 8 modules · flip cards</div></div>
         </button>
+      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={{...controls, showPaywall: () => setShowPaywall(true)}} onClose={() => setShowAccount(false)} />)}
     </div>
   );
 
@@ -530,7 +536,7 @@ export default function SpanishVoice({ user, userData, controls }) {
           {isListening ? "Release to send" : "Hold to speak"}
         </p>
       </div>
-      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={controls} onClose={() => setShowAccount(false)} />)}
+      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={{...controls, showPaywall: () => setShowPaywall(true)}} onClose={() => setShowAccount(false)} />)}
     </div>
   );
 }
