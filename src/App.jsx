@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { getAuth, confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import AuthModule from "./M1_AuthModule";
 import TrialModule from "./M2_TrialModule";
-import PaywallModule from "./M3_PaywallModule";
 import SpanishVoice from "./SpanishVoice";
 
 const FIREBASE_CONFIG = {
@@ -87,9 +86,6 @@ function ResetPasswordScreen({ oobCode }) {
 }
 
 export default function App() {
-  const [expired, setExpired]             = useState(false);
-  const [currentUserData, setCurrentUserData] = useState(null);
-
   // Detect Firebase password-reset action in URL
   const params  = new URLSearchParams(window.location.search);
   const mode    = params.get("mode");
@@ -101,13 +97,9 @@ export default function App() {
 
   return (
     <AuthModule onReady={(user, userData, controls) => {
-      if (currentUserData !== userData) setCurrentUserData(userData);
-      if (expired || userData?.subscriptionStatus === "expired") {
-        return <PaywallModule userData={userData} />;
-      }
       return (
-        <TrialModule userData={userData} onExpired={() => setExpired(true)} onUpgrade={() => setExpired(true)}>
-          <SpanishVoice user={user} userData={userData} controls={controls} onUpgrade={() => setExpired(true)} />
+        <TrialModule userData={userData} onExpired={() => {}} onUpgrade={() => {}}>
+          <SpanishVoice user={user} userData={userData} controls={controls} />
         </TrialModule>
       );
     }} />

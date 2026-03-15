@@ -9,10 +9,9 @@ const callCloudFn = httpsCallable(_fn, "callClaude");
 const SCENARIOS = [
   { id: "cafe", emoji: "☕", label: "Café", color: "#c8956c", prompt: "You are a friendly Spanish barista at a cozy café in Madrid. Greet the customer warmly, take their order, and keep small talk going. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "market", emoji: "🛒", label: "Mercado", color: "#6cbf8a", prompt: "You are a vendor at a lively Spanish market selling fresh produce. Describe your items, negotiate prices, and chat. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
-  { id: "directions", emoji: "🗺️", label: "Direcciones", color: "#6cb4c8", prompt: "You are a helpful local on the streets of Barcelona giving directions to a tourist. Use street vocabulary and helpful phrases. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "directions", emoji: "🗺️", label: "Direcciones y Transporte", color: "#6cb4c8", prompt: "You are a helpful local in a Spanish-speaking city assisting a tourist with directions and public transport. Help them navigate streets, find bus or metro stops, and use transportation vocabulary. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "restaurant", emoji: "🍽️", label: "Restaurante", color: "#c86c6c", prompt: "You are an enthusiastic waiter at a traditional Spanish restaurant. Describe the menu and take orders. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "amigo", emoji: "👋", label: "Amigo", color: "#a06cc8", prompt: "You are a fun, casual Spanish-speaking friend catching up. Talk about weekend plans and everyday life. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
-  { id: "transporte", emoji: "🚌", label: "Transporte", color: "#6c8fc8", prompt: "You are a helpful transit worker at a bus/metro station in Madrid. Help passengers with routes, schedules, and tickets. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "jobinterview", emoji: "💼", label: "Entrevista de Trabajo", color: "#c8a83a", prompt: "You are a professional interviewer at a Spanish company conducting a job interview. Ask about the candidate's experience, skills, and goals. Use formal language (usted). Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
 ];
 
@@ -342,7 +341,7 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
   };
 
   const accentColor = scenario?.color || "#c8956c";
-  const isTrial = userData?.subscriptionStatus === "trial";
+  const isTrial = userData?.subscriptionStatus !== "active";
 
 
   if (screen === "home") return (
@@ -400,7 +399,7 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
             {LEVELS.map(l => {
               const locked = isTrial && l.id !== "beginner";
               return (
-                <button key={l.id} onClick={() => locked ? onUpgrade?.() : setLevel(l.id)} style={{
+                <button key={l.id} onClick={() => locked ? setShowAccount(true) : setLevel(l.id)} style={{
                   padding: "12px 16px", borderRadius: 10, textAlign: "left",
                   border: `1.5px solid ${level === l.id ? "#c8956c" : "#1e1e2a"}`,
                   background: level === l.id ? "#c8956c18" : "#12121a",
@@ -422,7 +421,7 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
               const locked = isTrial && s.id !== "cafe";
               return (
                 <button key={s.id}
-                  onClick={() => locked ? onUpgrade?.() : (supported && startScenario(s))}
+                  onClick={() => locked ? setShowAccount(true) : (supported && startScenario(s))}
                   disabled={!locked && !supported}
                   style={{
                     padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
@@ -445,7 +444,7 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
         {isTrial ? (
           <div style={{ position: "relative", marginBottom: 28 }}>
             <div style={{ pointerEvents: "none", opacity: 0.3 }}><TranslatorModule /></div>
-            <div onClick={() => onUpgrade?.()} style={{
+            <div onClick={() => setShowAccount(true)} style={{
               position: "absolute", inset: 0, cursor: "pointer", borderRadius: 14,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
