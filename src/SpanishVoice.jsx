@@ -35,6 +35,68 @@ function Waveform({ active, color }) {
   );
 }
 
+function InstallBanner() {
+  const [show, setShow] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const deferredPromptRef = useRef(null);
+
+  useEffect(() => {
+    if (localStorage.getItem("habla_install_dismissed")) return;
+    if (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone) return;
+    const ua = navigator.userAgent.toLowerCase();
+    const ios = /iphone|ipad|ipod/.test(ua);
+    if (ios) { setIsIOS(true); setShow(true); return; }
+    const handler = (e) => { e.preventDefault(); deferredPromptRef.current = e; setShow(true); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const dismiss = () => { localStorage.setItem("habla_install_dismissed", "1"); setShow(false); };
+  const install = async () => {
+    if (!isIOS && deferredPromptRef.current) {
+      deferredPromptRef.current.prompt();
+      await deferredPromptRef.current.userChoice;
+      deferredPromptRef.current = null;
+    }
+    dismiss();
+  };
+
+  if (!show) return null;
+  return (
+    <div style={{
+      background: "#0d1a26", border: "1px solid #1e3a5a", borderRadius: 12,
+      padding: "12px 16px", marginBottom: 20, display: "flex",
+      alignItems: "flex-start", justifyContent: "space-between", gap: 10,
+      fontFamily: "sans-serif",
+    }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: 1 }}>
+        <span style={{ fontSize: 20, flexShrink: 0 }}>📲</span>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#7eb8c9", marginBottom: 3 }}>
+            Add Habla to your Home Screen
+          </div>
+          <div style={{ fontSize: 11, color: "#4a7a8a", lineHeight: 1.5 }}>
+            {isIOS
+              ? <>Tap the <strong style={{ color: "#6aacbe" }}>Share</strong> button in Safari, then <strong style={{ color: "#6aacbe" }}>Add to Home Screen</strong> for the best experience.</>
+              : <>Tap <strong style={{ color: "#6aacbe" }}>Add to Home Screen</strong> for the best experience — works offline too.</>}
+          </div>
+          {!isIOS && (
+            <button onClick={install} style={{
+              marginTop: 8, fontSize: 11, fontWeight: 700, color: "#7eb8c9",
+              border: "1px solid #7eb8c966", borderRadius: 20,
+              padding: "4px 14px", background: "none", cursor: "pointer",
+            }}>Add now →</button>
+          )}
+        </div>
+      </div>
+      <button onClick={dismiss} style={{
+        background: "none", border: "none", color: "#2a3a4a",
+        cursor: "pointer", fontSize: 18, flexShrink: 0, padding: 0,
+      }}>×</button>
+    </div>
+  );
+}
+
 function extractSpanishOnly(text) {
   return text
     .replace(/\([^)]*[a-zA-Z]{3,}[^)]*\)/g, '')
@@ -101,7 +163,7 @@ function ApiKeyScreen({ onSave }) {
   );
 }
 
-export default function SpanishVoice({ user, userData, controls }) {
+export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
   const [screen, setScreen] = useState("home");
   const [scenario, setScenario] = useState(null);
   const [level, setLevel] = useState("beginner");
@@ -274,6 +336,7 @@ export default function SpanishVoice({ user, userData, controls }) {
   };
 
   const accentColor = scenario?.color || "#c8956c";
+  const isTrial = userData?.subscriptionStatus === "trial";
 
 
   if (screen === "home") return (
@@ -291,6 +354,7 @@ export default function SpanishVoice({ user, userData, controls }) {
         ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 2px; }
       `}</style>
       <div style={{ width: "100%", maxWidth: 420, padding: "52px 24px 0", animation: "fadeUp 0.6s ease" }}>
+        <InstallBanner />
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ fontSize: 44, marginBottom: 8 }}>🇪🇸</div>
@@ -316,36 +380,71 @@ export default function SpanishVoice({ user, userData, controls }) {
         <div style={{ marginBottom: 28 }}>
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Level</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {LEVELS.map(l => (
-              <button key={l.id} onClick={() => setLevel(l.id)} style={{
-                padding: "12px 16px", borderRadius: 10, textAlign: "left",
-                border: `1.5px solid ${level === l.id ? "#c8956c" : "#1e1e2a"}`,
-                background: level === l.id ? "#c8956c18" : "#12121a",
-                color: level === l.id ? "#e8d5c0" : "#5a5555",
-                cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
-              }}>{l.label}</button>
-            ))}
+            {LEVELS.map(l => {
+              const locked = isTrial && l.id !== "beginner";
+              return (
+                <button key={l.id} onClick={() => locked ? onUpgrade?.() : setLevel(l.id)} style={{
+                  padding: "12px 16px", borderRadius: 10, textAlign: "left",
+                  border: `1.5px solid ${level === l.id ? "#c8956c" : "#1e1e2a"}`,
+                  background: level === l.id ? "#c8956c18" : "#12121a",
+                  color: level === l.id ? "#e8d5c0" : locked ? "#3a3535" : "#5a5555",
+                  cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                }}>
+                  <span>{l.label}</span>
+                  {locked && <span style={{ fontSize: 13 }}>🔒</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div>
         {/* Translator */}
-        <TranslatorModule />
+        {isTrial ? (
+          <div style={{ position: "relative", marginBottom: 28 }}>
+            <div style={{ pointerEvents: "none", opacity: 0.3 }}>
+              <TranslatorModule />
+            </div>
+            <div onClick={() => onUpgrade?.()} style={{
+              position: "absolute", inset: 0, cursor: "pointer", borderRadius: 14,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <div style={{
+                background: "#12121a", border: "1.5px solid #c8956c55",
+                borderRadius: 12, padding: "10px 22px", textAlign: "center",
+              }}>
+                <div style={{ fontSize: 20, marginBottom: 4 }}>🔒</div>
+                <div style={{ fontSize: 12, color: "#c8956c", fontFamily: "sans-serif", fontWeight: 700 }}>Upgrade to unlock</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <TranslatorModule />
+        )}
 
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {SCENARIOS.map((s, i) => (
-              <button key={s.id} onClick={() => startScenario(s)} disabled={!supported} style={{
-                padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
-                background: "#12121a", cursor: supported ? "pointer" : "not-allowed", textAlign: "left",
-                animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = "#12121a"; }}
-              >
-                <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
-              </button>
-            ))}
+            {SCENARIOS.map((s, i) => {
+              const locked = isTrial && s.id !== "cafe";
+              return (
+                <button key={s.id}
+                  onClick={() => locked ? onUpgrade?.() : (supported && startScenario(s))}
+                  disabled={!locked && !supported}
+                  style={{
+                    padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
+                    background: "#12121a", cursor: locked || supported ? "pointer" : "not-allowed",
+                    textAlign: "left", animation: `fadeUp 0.5s ease ${i * 0.07}s both`,
+                    transition: "all 0.2s", position: "relative", opacity: locked ? 0.5 : 1,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = locked ? "#2a2a3a" : s.color; e.currentTarget.style.background = locked ? "#141218" : `${s.color}12`; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = "#12121a"; }}
+                >
+                  <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: locked ? "#4a4440" : "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
+                  {locked && <div style={{ position: "absolute", top: 8, right: 10, fontSize: 13 }}>🔒</div>}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
