@@ -3,6 +3,16 @@ import { useState } from "react";
 export default function HomescreenPrompt({ onClose }) {
   const [tab, setTab] = useState("ios");
 
+  // Don't show if already added to homescreen (standalone mode) or previously dismissed permanently
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  const permanentlyDismissed = localStorage.getItem("habla_hs_dismissed");
+  if (isStandalone || permanentlyDismissed) { onClose(); return null; }
+
+  const handleDone = () => {
+    localStorage.setItem("habla_hs_dismissed", "1");
+    onClose();
+  };
+
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 2000,
@@ -30,7 +40,7 @@ export default function HomescreenPrompt({ onClose }) {
         </div>
 
         <p style={{ color: "#8a7a6a", fontSize: 13, margin: "0 0 18px", lineHeight: 1.6, fontFamily: "sans-serif" }}>
-          For the best experience, add Habla to your home screen for quick access — just like a real app!
+          Add to home screen for best experience.
         </p>
 
         {/* Tab switcher */}
@@ -71,13 +81,19 @@ export default function HomescreenPrompt({ onClose }) {
           )}
         </div>
 
-        {/* Dismiss */}
-        <button onClick={onClose} style={{
+        {/* Buttons */}
+        <button onClick={handleDone} style={{
           width: "100%", marginTop: 16, padding: "11px 0",
+          background: "linear-gradient(135deg, #c8956c, #a87040)",
+          border: "none", color: "#0e0e14", borderRadius: 12, fontSize: 13,
+          fontWeight: 700, fontFamily: "sans-serif", cursor: "pointer", transition: "all 0.2s",
+        }}>I've added it!</button>
+        <button onClick={onClose} style={{
+          width: "100%", marginTop: 8, padding: "11px 0",
           background: "none", border: "1px solid #2a2018",
           color: "#5a5050", borderRadius: 12, fontSize: 13,
           fontFamily: "sans-serif", cursor: "pointer", transition: "all 0.2s",
-        }}>Got it</button>
+        }}>Remind me later</button>
       </div>
     </div>
   );
