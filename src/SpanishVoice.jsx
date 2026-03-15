@@ -12,7 +12,8 @@ const SCENARIOS = [
   { id: "directions", emoji: "🗺️", label: "Direcciones", color: "#6cb4c8", prompt: "You are a helpful local on the streets of Barcelona giving directions to a tourist. Use street vocabulary and helpful phrases. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "restaurant", emoji: "🍽️", label: "Restaurante", color: "#c86c6c", prompt: "You are an enthusiastic waiter at a traditional Spanish restaurant. Describe the menu and take orders. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "amigo", emoji: "👋", label: "Amigo", color: "#a06cc8", prompt: "You are a fun, casual Spanish-speaking friend catching up. Talk about weekend plans and everyday life. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
-  { id: "entrevista", emoji: "💼", label: "Entrevista de Trabajo", color: "#c8a83a", prompt: "You are a professional interviewer at a Spanish company conducting a job interview. Ask about the candidate's experience, skills, and goals. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "transporte", emoji: "🚌", label: "Transporte", color: "#6c8fc8", prompt: "You are a helpful transit worker at a bus/metro station in Madrid. Help passengers with routes, schedules, and tickets. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "jobinterview", emoji: "💼", label: "Entrevista de Trabajo", color: "#c8a83a", prompt: "You are a professional interviewer at a Spanish company conducting a job interview. Ask about the candidate's experience, skills, and goals. Use formal language (usted). Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
 ];
 
 const LEVELS = [
@@ -73,13 +74,11 @@ function InstallBanner() {
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: 1 }}>
         <span style={{ fontSize: 20, flexShrink: 0 }}>📲</span>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#7eb8c9", marginBottom: 3 }}>
-            Add Habla to your Home Screen
-          </div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#7eb8c9", marginBottom: 3 }}>Add Habla to your Home Screen</div>
           <div style={{ fontSize: 11, color: "#4a7a8a", lineHeight: 1.5 }}>
             {isIOS
               ? <>Tap the <strong style={{ color: "#6aacbe" }}>Share</strong> button in Safari, then <strong style={{ color: "#6aacbe" }}>Add to Home Screen</strong> for the best experience.</>
-              : <>Tap <strong style={{ color: "#6aacbe" }}>Add to Home Screen</strong> for the best experience — works offline too.</>}
+              : <>Tap <strong style={{ color: "#6aacbe" }}>Add to Home Screen</strong> for the best experience.</>}
           </div>
           {!isIOS && (
             <button onClick={install} style={{
@@ -91,8 +90,7 @@ function InstallBanner() {
         </div>
       </div>
       <button onClick={dismiss} style={{
-        background: "none", border: "none", color: "#2a3a4a",
-        cursor: "pointer", fontSize: 18, flexShrink: 0, padding: 0,
+        background: "none", border: "none", color: "#2a3a4a", cursor: "pointer", fontSize: 18, flexShrink: 0, padding: 0,
       }}>×</button>
     </div>
   );
@@ -125,7 +123,7 @@ function ApiKeyScreen({ onSave }) {
     }}>
       <style>{`@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } } * { box-sizing: border-box; }`}</style>
       <div style={{ width: "100%", maxWidth: 400, animation: "fadeUp 0.5s ease" }}>
-        <div style={{ fontSize: 44, marginBottom: 12, textAlign: "center" }}>🇪🇸</div>
+        <div style={{ marginBottom: 12, textAlign: "center" }}><svg width="52" height="52" viewBox="0 0 92 92" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 C4 8 0 12 0 18 L0 54 C0 60 4 64 10 64 L28 64 L22 80 L40 64 L82 64 C88 64 92 60 92 54 L92 18 C92 12 88 8 82 8 Z" fill="#c8956c"/><rect x="14" y="30" width="8" height="16" rx="4" fill="#2a1a0a"/><rect x="26" y="22" width="8" height="32" rx="4" fill="#2a1a0a"/><rect x="38" y="16" width="8" height="40" rx="4" fill="#2a1a0a"/><rect x="50" y="22" width="8" height="32" rx="4" fill="#2a1a0a"/><rect x="62" y="28" width="8" height="16" rx="4" fill="#2a1a0a"/></svg></div>
         <h1 style={{ fontFamily: "Georgia, serif", fontSize: 32, fontWeight: 900, textAlign: "center", margin: "0 0 8px", color: "#e8e0d5" }}>Habla</h1>
         <p style={{ textAlign: "center", color: "#6b6560", fontSize: 13, marginBottom: 32, letterSpacing: 2, textTransform: "uppercase" }}>Voice Spanish Practice</p>
 
@@ -180,6 +178,7 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
   const [hint, setHint] = useState("");
   const [grammarLoading, setGrammarLoading] = useState(false);
   const [corrections, setCorrections] = useState({});
+  const [lastAiSpoken, setLastAiSpoken] = useState("");
 
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
@@ -204,11 +203,11 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
     synthRef.current.cancel();
   };
 
-  const speak = useCallback((text) => {
+  const speakAtRate = useCallback((text, rate = 0.92) => {
     synthRef.current.cancel();
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = "es-ES";
-    utter.rate = 0.92;
+    utter.rate = rate;
     utter.pitch = 1.05;
     const voices = synthRef.current.getVoices();
     const spanishVoice = voices.find(v => v.lang.startsWith("es"));
@@ -218,6 +217,8 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
     utter.onerror = () => setStatus("idle");
     synthRef.current.speak(utter);
   }, []);
+
+  const speak = useCallback((text) => speakAtRate(text, 0.92), [speakAtRate]);
 
   const callClaude = useCallback(async (userText, currentMessages, scen, lvl) => {
     setStatus("thinking");
@@ -235,7 +236,9 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
       setAiText(reply);
       const updated = [...currentMessages, { role: "user", text: userText }, { role: "ai", text: reply }];
       setMessages(updated);
-      speak(extractSpanishOnly(reply));
+      const spokenText = extractSpanishOnly(reply);
+      setLastAiSpoken(spokenText);
+      speak(spokenText);
       return updated;
     } catch {
       setError("Connection error. Tap the mic to try again.");
@@ -322,7 +325,9 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
       const reply = data.content?.find(b => b.type === "text")?.text || "¡Hola!";
       setAiText(reply);
       setMessages([{ role: "ai", text: reply }]);
-      speak(extractSpanishOnly(reply));
+      const spokenText = extractSpanishOnly(reply);
+      setLastAiSpoken(spokenText);
+      speak(spokenText);
     } catch {
       setError("Connection error.");
       setStatus("idle");
@@ -341,6 +346,7 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
 
 
   if (screen === "home") return (
+    <>
     <div style={{
       minHeight: "100vh", background: "#0e0e14", color: "#e8e0d5",
       fontFamily: "'Palatino Linotype', Georgia, serif",
@@ -357,21 +363,31 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
       <div style={{ width: "100%", maxWidth: 420, padding: "52px 24px 0", animation: "fadeUp 0.6s ease" }}>
         <InstallBanner />
         <div style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>🇪🇸</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <svg width="44" height="44" viewBox="0 0 92 92" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 8 C4 8 0 12 0 18 L0 54 C0 60 4 64 10 64 L28 64 L22 80 L40 64 L82 64 C88 64 92 60 92 54 L92 18 C92 12 88 8 82 8 Z" fill="#c8956c"/>
+                <rect x="14" y="30" width="8" height="16" rx="4" fill="#2a1a0a"/>
+                <rect x="26" y="22" width="8" height="32" rx="4" fill="#2a1a0a"/>
+                <rect x="38" y="16" width="8" height="40" rx="4" fill="#2a1a0a"/>
+                <rect x="50" y="22" width="8" height="32" rx="4" fill="#2a1a0a"/>
+                <rect x="62" y="28" width="8" height="16" rx="4" fill="#2a1a0a"/>
+              </svg>
+              <div>
+                <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, margin: "0 0 4px", color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
+                <p style={{ margin: 0, fontSize: 13, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Speak Spanish. Live it.</p>
+              </div>
+            </div>
             <button onClick={() => setShowAccount(true)} style={{
               background: "none", border: "1px solid #2a2a38", color: "#3a3a4a",
-              borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer",
-              marginTop: 8, transition: "all 0.2s",
+              borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer",
+              transition: "all 0.2s", flexShrink: 0,
             }}
               onMouseEnter={e => { e.currentTarget.style.color = "#a78bfa"; e.currentTarget.style.borderColor = "#a78bfa"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}
             >👤 Account</button>
-            <button onClick={() => controls && controls.signOut()} style={{ background: "none", border: "1px solid #2a2a38", color: "#3a3a4a", borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer", marginTop: 8, marginLeft: 6, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.borderColor = "#f87171"; }} onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}>🚪 Sign Out</button>
           </div>
-          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, margin: "0 0 6px", color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
-          <p style={{ margin: 0, fontSize: 13, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Voice Spanish Practice</p>
-          <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak naturally. Your AI conversation partner listens, responds in Spanish, and helps you improve.</p>
+          <p style={{ margin: "12px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak Spanish freely. I will listen and help you improve.</p>
         </div>
         {!supported && (
           <div style={{ background: "#2a1a1a", border: "1px solid #c86c6c", borderRadius: 12, padding: 16, marginBottom: 20, fontSize: 13, color: "#f87171", fontFamily: "sans-serif" }}>
@@ -399,30 +415,7 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
             })}
           </div>
         </div>
-        <div>
-        {/* Translator */}
-        {isTrial ? (
-          <div style={{ position: "relative", marginBottom: 28 }}>
-            <div style={{ pointerEvents: "none", opacity: 0.3 }}>
-              <TranslatorModule />
-            </div>
-            <div onClick={() => onUpgrade?.()} style={{
-              position: "absolute", inset: 0, cursor: "pointer", borderRadius: 14,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <div style={{
-                background: "#12121a", border: "1.5px solid #c8956c55",
-                borderRadius: 12, padding: "10px 22px", textAlign: "center",
-              }}>
-                <div style={{ fontSize: 20, marginBottom: 4 }}>🔒</div>
-                <div style={{ fontSize: 12, color: "#c8956c", fontFamily: "sans-serif", fontWeight: 700 }}>Upgrade to unlock</div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <TranslatorModule />
-        )}
-
+        <div style={{ marginTop: 28 }}>
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {SCENARIOS.map((s, i) => {
@@ -448,12 +441,33 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
             })}
           </div>
         </div>
+        {/* Translator */}
+        {isTrial ? (
+          <div style={{ position: "relative", marginBottom: 28 }}>
+            <div style={{ pointerEvents: "none", opacity: 0.3 }}><TranslatorModule /></div>
+            <div onClick={() => onUpgrade?.()} style={{
+              position: "absolute", inset: 0, cursor: "pointer", borderRadius: 14,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <div style={{ background: "#12121a", border: "1.5px solid #c8956c55", borderRadius: 12, padding: "10px 22px", textAlign: "center" }}>
+                <div style={{ fontSize: 20, marginBottom: 4 }}>🔒</div>
+                <div style={{ fontSize: 12, color: "#c8956c", fontFamily: "sans-serif", fontWeight: 700 }}>Upgrade to unlock</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <TranslatorModule />
+        )}
       </div>
         <button onClick={() => setScreen("vocab")} style={{ marginTop: 20, width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#12121a", color: "#8a8075", cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 12 }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#c4b5fd"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.color = "#8a8075"; }}>
           <span style={{ fontSize: 22 }}>📚</span>
           <div><div style={{ fontWeight: 700, fontSize: 14 }}>Vocabulario</div><div style={{ fontSize: 12, marginTop: 2, opacity: 0.6 }}>500 words · 8 modules · flip cards</div></div>
         </button>
     </div>
+    {showAccount && user && (
+      <AccountModule user={user} userData={userData || { subscriptionStatus: "trial", name: user.email }} controls={controls} onClose={() => setShowAccount(false)} onSubscribe={onUpgrade} />
+    )}
+    </>
   );
 
   if (screen === "vocab") return (
@@ -505,7 +519,7 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
               {m.role === "ai" && !showTranslations ? extractSpanishOnly(m.text) : m.text}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, padding: "0 4px" }}>
-              <div style={{ fontSize: 10, color: "#3a3a4a" }}>{m.role === "ai" ? `🇪🇸 ${scenario?.label}` : "Tú"}</div>
+              <div style={{ fontSize: 10, color: "#3a3a4a" }}>{m.role === "ai" ? scenario?.label : "Tú"}</div>
               {m.role === "user" && !corrections[i] && (
                 <button onClick={() => checkGrammar(m.text, i)} disabled={grammarLoading}
                   style={{ background: "none", border: "1px solid #2a2a42", color: "#4a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
@@ -574,9 +588,13 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
         </div>
         {isListening && <Waveform active={true} color={accentColor} />}
         {isSpeaking && <Waveform active={true} color={accentColor} />}
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <button onClick={getHint} disabled={hintLoading || isThinking || isSpeaking || messages.length === 0}
             style={{ width: 48, height: 48, borderRadius: "50%", background: hint ? "#facc1522" : "#12121a", border: `1.5px solid ${hint ? "#facc1566" : "#2a2a42"}`, color: hint ? "#facc15" : "#3a3a4a", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: messages.length === 0 ? 0.3 : 1 }}>💡</button>
+          <button onClick={() => lastAiSpoken && speakAtRate(lastAiSpoken, 0.92)} disabled={isThinking || isListening || !lastAiSpoken}
+            title="Repeat" style={{ width: 44, height: 44, borderRadius: "50%", background: "#12121a", border: "1.5px solid #2a2a42", color: "#3a3a4a", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: !lastAiSpoken ? 0.3 : 1 }}>🔁</button>
+          <button onClick={() => lastAiSpoken && speakAtRate(lastAiSpoken, 0.55)} disabled={isThinking || isListening || !lastAiSpoken}
+            title="Slow" style={{ width: 44, height: 44, borderRadius: "50%", background: "#12121a", border: "1.5px solid #2a2a42", color: "#3a3a4a", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: !lastAiSpoken ? 0.3 : 1 }}>🐢</button>
           <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {isListening && [1, 2].map(r => (
               <div key={r} style={{ position: "absolute", borderRadius: "50%", width: 80, height: 80, border: `2px solid ${accentColor}`, animation: `ripple 1.5s ease ${r * 0.5}s infinite`, pointerEvents: "none" }} />
@@ -594,7 +612,7 @@ export default function SpanishVoice({ user, userData, controls, onUpgrade }) {
           {isListening ? "Release to send" : "Hold to speak"}
         </p>
       </div>
-      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={controls} onClose={() => setShowAccount(false)} />)}
+      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={controls} onClose={() => setShowAccount(false)} onSubscribe={onUpgrade} />)}
     </div>
   );
 }
