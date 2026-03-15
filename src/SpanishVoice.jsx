@@ -348,11 +348,11 @@ export default function SpanishVoice({ user, userData, controls }) {
             ))}
           </div>
         </div>
-      </div>
         <button onClick={() => setScreen("vocab")} style={{ marginTop: 20, width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#12121a", color: "#8a8075", cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 12 }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#c4b5fd"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.color = "#8a8075"; }}>
           <span style={{ fontSize: 22 }}>📚</span>
           <div><div style={{ fontWeight: 700, fontSize: 14 }}>Vocabulario</div><div style={{ fontSize: 12, marginTop: 2, opacity: 0.6 }}>500 words · 8 modules · flip cards</div></div>
         </button>
+      </div>
     </div>
   );
 
