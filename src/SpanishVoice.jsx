@@ -3,6 +3,7 @@ import VocabularyModules from "./VocabularyModules";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import AccountModule from "./M5_AccountModule";
+import PaywallModule from "./M3_PaywallModule";
 const _fn = getFunctions();
 const callCloudFn = httpsCallable(_fn, "callClaude");
 
@@ -109,6 +110,7 @@ export default function SpanishVoice({ user, userData, controls }) {
   const [messages, setMessages] = useState([]);
   const [status, setStatus] = useState("idle");
   const [showAccount, setShowAccount] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [aiText, setAiText] = useState("");
   const [error, setError] = useState("");
@@ -365,7 +367,8 @@ export default function SpanishVoice({ user, userData, controls }) {
           <span style={{ fontSize: 22 }}>📚</span>
           <div><div style={{ fontWeight: 700, fontSize: 14 }}>Vocabulario</div><div style={{ fontSize: 12, marginTop: 2, opacity: 0.6 }}>500 words · 8 modules · flip cards</div></div>
         </button>
-      {showAccount && <AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user?.email}} controls={controls} onClose={() => setShowAccount(false)} />}
+      {showAccount && <AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user?.email}} controls={controls} onClose={() => setShowAccount(false)} onSubscribe={() => { setShowAccount(false); setShowPaywall(true); }} />}
+      {showPaywall && <PaywallModule userData={userData} onClose={() => setShowPaywall(false)} />}
     </div>
   );
 

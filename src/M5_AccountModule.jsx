@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function AccountModule({ user, userData, controls, onClose }) {
+export default function AccountModule({ user, userData, controls, onClose, onSubscribe }) {
   const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
@@ -91,15 +91,15 @@ export default function AccountModule({ user, userData, controls, onClose }) {
           )}
         </div>
 
-        {/* Upgrade button — only show for trial/expired */}
+        {/* Subscribe button — only show for trial/expired */}
         {userData?.subscriptionStatus !== "active" && (
-          <a href="#upgrade" style={{
-            display:"block", textAlign:"center",
+          <button onClick={onSubscribe} style={{
+            display:"block", width:"100%", textAlign:"center",
             background:"#c86c3a", color:"#fff",
             borderRadius:12, padding:"12px 0", fontSize:14, fontWeight:700,
-            textDecoration:"none", marginBottom:12,
+            border:"none", marginBottom:12, cursor:"pointer",
             transition:"opacity 0.2s",
-          }}>Upgrade to Premium →</a>
+          }}>Subscribe</button>
         )}
 
         {/* Sign out */}

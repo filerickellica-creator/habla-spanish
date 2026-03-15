@@ -14,7 +14,7 @@ const FIREBASE_CONFIG = {
 const firebaseApp = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
 const db = getFirestore(firebaseApp);
 
-export default function PaywallModule({ userData }) {
+export default function PaywallModule({ userData, onClose }) {
   const [hover, setHover]   = useState(null);
   const [plans, setPlans]   = useState(null); // null = loading
 
@@ -42,7 +42,18 @@ export default function PaywallModule({ userData }) {
       display:"flex", flexDirection:"column",
       alignItems:"center", justifyContent:"center",
       fontFamily:"sans-serif", padding:"40px 20px",
+      position:"relative",
     }}>
+      {/* Back button */}
+      {onClose && (
+        <button onClick={onClose} style={{
+          position:"absolute", top:20, left:20,
+          background:"#1a1410", border:"1px solid #2a2018",
+          color:"#8a7a6a", borderRadius:8, padding:"6px 14px",
+          fontSize:13, cursor:"pointer",
+        }}>← Back</button>
+      )}
+
       {/* Logo */}
       <div style={{marginBottom:8}}>
         <span style={{fontSize:36}}>🇪🇸</span>
