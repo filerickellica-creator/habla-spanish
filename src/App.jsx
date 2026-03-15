@@ -89,15 +89,15 @@ function ResetPasswordScreen({ oobCode }) {
 
 const INACTIVITY_TIMEOUT = 60 * 1000; // 1 minute
 
-function useAutoSignOut(controls) {
+function useAutoSignOut(controlsRef) {
   const timerRef = useRef(null);
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      if (controls?.signOut) controls.signOut();
+      if (controlsRef.current?.signOut) controlsRef.current.signOut();
     }, INACTIVITY_TIMEOUT);
-  }, [controls]);
+  }, [controlsRef]);
 
   useEffect(() => {
     const events = ["mousedown", "keydown", "touchstart", "scroll", "mousemove"];
@@ -114,9 +114,9 @@ export default function App() {
   const [expired, setExpired]             = useState(false);
   const [currentUserData, setCurrentUserData] = useState(null);
   const [showHomescreenPrompt, setShowHomescreenPrompt] = useState(false);
-  const [activeControls, setActiveControls] = useState(null);
+  const controlsRef = useRef(null);
 
-  useAutoSignOut(activeControls);
+  useAutoSignOut(controlsRef);
 
   // Detect Firebase password-reset action in URL
   const params  = new URLSearchParams(window.location.search);
@@ -130,7 +130,7 @@ export default function App() {
   return (
     <>
       <AuthModule onReady={(user, userData, controls) => {
-        if (activeControls !== controls) setActiveControls(controls);
+        controlsRef.current = controls;
         if (currentUserData !== userData) setCurrentUserData(userData);
 
         // Show homescreen prompt once per session on login
