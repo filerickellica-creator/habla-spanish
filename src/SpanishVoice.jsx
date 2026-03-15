@@ -109,6 +109,11 @@ export default function SpanishVoice({ user, userData, controls }) {
   const [messages, setMessages] = useState([]);
   const [status, setStatus] = useState("idle");
   const [showAccount, setShowAccount] = useState(false);
+
+  const isTrial = userData?.subscriptionStatus === "trial";
+  const isLevelLocked = (lvlId) => isTrial && lvlId !== "beginner";
+  const isScenarioLocked = (scenId) => isTrial && scenId !== "cafe";
+  const isTranslatorLocked = isTrial;
   const [transcript, setTranscript] = useState("");
   const [aiText, setAiText] = useState("");
   const [error, setError] = useState("");
@@ -317,36 +322,66 @@ export default function SpanishVoice({ user, userData, controls }) {
         <div style={{ marginBottom: 28 }}>
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Level</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {LEVELS.map(l => (
-              <button key={l.id} onClick={() => setLevel(l.id)} style={{
-                padding: "12px 16px", borderRadius: 10, textAlign: "left",
-                border: `1.5px solid ${level === l.id ? "#c8956c" : "#1e1e2a"}`,
-                background: level === l.id ? "#c8956c18" : "#12121a",
-                color: level === l.id ? "#e8d5c0" : "#5a5555",
-                cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
-              }}>{l.label}</button>
-            ))}
+            {LEVELS.map(l => {
+              const locked = isLevelLocked(l.id);
+              return (
+                <button key={l.id} onClick={() => locked ? setShowAccount(true) : setLevel(l.id)} style={{
+                  padding: "12px 16px", borderRadius: 10, textAlign: "left",
+                  border: `1.5px solid ${locked ? "#1e1e2a" : level === l.id ? "#c8956c" : "#1e1e2a"}`,
+                  background: locked ? "#0e0e14" : level === l.id ? "#c8956c18" : "#12121a",
+                  color: locked ? "#3a3535" : level === l.id ? "#e8d5c0" : "#5a5555",
+                  cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  opacity: locked ? 0.6 : 1,
+                }}>
+                  <span>{l.label}</span>
+                  {locked && <span style={{ fontSize: 14 }}>🔒</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div>
         {/* Translator */}
-        <TranslatorModule />
+        {isTranslatorLocked ? (
+          <div style={{ marginBottom: 28 }}>
+            <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Translate</p>
+            <button onClick={() => setShowAccount(true)} style={{ width: "100%", padding: "18px 20px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#0e0e14", cursor: "pointer", textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.5 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 22 }}>🔤</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#3a3535", fontFamily: "sans-serif" }}>English → Spanish</div>
+                  <div style={{ fontSize: 11, color: "#2a2825", fontFamily: "sans-serif", marginTop: 2 }}>Say a word or phrase to translate</div>
+                </div>
+              </div>
+              <span style={{ fontSize: 14 }}>🔒</span>
+            </button>
+          </div>
+        ) : (
+          <TranslatorModule />
+        )}
 
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {SCENARIOS.map((s, i) => (
-              <button key={s.id} onClick={() => startScenario(s)} disabled={!supported} style={{
-                padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
-                background: "#12121a", cursor: supported ? "pointer" : "not-allowed", textAlign: "left",
-                animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = "#12121a"; }}
-              >
-                <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
-              </button>
-            ))}
+            {SCENARIOS.map((s, i) => {
+              const locked = isScenarioLocked(s.id);
+              return (
+                <button key={s.id} onClick={() => locked ? setShowAccount(true) : startScenario(s)} disabled={!supported && !locked} style={{
+                  padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
+                  background: locked ? "#0e0e14" : "#12121a",
+                  cursor: "pointer", textAlign: "left",
+                  animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
+                  opacity: locked ? 0.5 : 1, position: "relative",
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = locked ? "#3a3535" : s.color; e.currentTarget.style.background = locked ? "#0e0e14" : `${s.color}12`; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = locked ? "#0e0e14" : "#12121a"; }}
+                >
+                  <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: locked ? "#3a3535" : "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
+                  {locked && <span style={{ position: "absolute", top: 10, right: 10, fontSize: 14 }}>🔒</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
