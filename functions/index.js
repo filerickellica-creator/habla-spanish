@@ -57,12 +57,25 @@ exports.callClaude = onCall({ timeoutSeconds: 30, memory: "256MiB" }, async (req
     throw new HttpsError("permission-denied", "No active subscription.");
   }
 
-  // Check daily API call limit (200 per day)
-  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  // Check daily limit (100/day) and weekly hard limit (300/week)
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
   const dailyKey = `apiCalls_${today}`;
   const dailyCalls = user[dailyKey] || 0;
-  if (dailyCalls >= 200) {
+  if (dailyCalls >= 100) {
     throw new HttpsError("resource-exhausted", "DAILY_LIMIT_REACHED");
+  }
+
+  // Weekly limit: sum last 7 days
+  let weeklyCalls = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = `apiCalls_${d.toISOString().slice(0, 10)}`;
+    weeklyCalls += (user[key] || 0);
+  }
+  if (weeklyCalls >= 300) {
+    throw new HttpsError("resource-exhausted", "WEEKLY_LIMIT_REACHED");
   }
 
   const { system, messages, max_tokens } = request.data;
