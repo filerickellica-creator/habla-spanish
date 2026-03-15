@@ -10,7 +10,7 @@ const UNSUB_REASONS = [
 
 export default function AccountModule({ user, userData, controls, onClose, onSubscribe }) {
   const [signingOut, setSigningOut] = useState(false);
-  const [unsubStep, setUnsubStep] = useState(null); // null | "confirm" | "done"
+  const [unsubStep, setUnsubStep] = useState(null); // null | "reason" | "confirm" | "done"
   const [unsubReason, setUnsubReason] = useState("");
   const [unsubFeedback, setUnsubFeedback] = useState("");
 
@@ -44,12 +44,17 @@ export default function AccountModule({ user, userData, controls, onClose, onSub
       boxShadow:"0 24px 64px rgba(0,0,0,0.6)",
     }} onClick={e => e.stopPropagation()}>
 
-      {unsubStep === "confirm" ? (
-        <UnsubscribeFlow
+      {unsubStep === "reason" ? (
+        <UnsubscribeStep1
           reason={unsubReason}
           feedback={unsubFeedback}
           onReasonChange={setUnsubReason}
           onFeedbackChange={setUnsubFeedback}
+          onNext={() => setUnsubStep("confirm")}
+          onBack={() => setUnsubStep(null)}
+        />
+      ) : unsubStep === "confirm" ? (
+        <UnsubscribeStep2
           onKeep={() => setUnsubStep(null)}
           onConfirm={() => setUnsubStep("done")}
         />
@@ -130,7 +135,7 @@ export default function AccountModule({ user, userData, controls, onClose, onSub
           {/* Unsubscribe button — active only */}
           {subStatus === "active" && (
             <button
-              onClick={() => setUnsubStep("confirm")}
+              onClick={() => setUnsubStep("reason")}
               style={{
                 width:"100%", background:"none",
                 border:"1px solid #2a2018", color:"#5a5050",
@@ -172,7 +177,7 @@ export default function AccountModule({ user, userData, controls, onClose, onSub
   );
 }
 
-function UnsubscribeFlow({ reason, feedback, onReasonChange, onFeedbackChange, onKeep, onConfirm }) {
+function UnsubscribeStep1({ reason, feedback, onReasonChange, onFeedbackChange, onNext, onBack }) {
   return (
     <div>
       <h2 style={{color:"#f0e6d3", fontSize:17, fontWeight:700, margin:"0 0 6px"}}>Cancel Subscription?</h2>
@@ -223,7 +228,38 @@ function UnsubscribeFlow({ reason, feedback, onReasonChange, onFeedbackChange, o
         onBlur={e => e.target.style.borderColor = "#2a2018"}
       />
 
-      {/* Actions */}
+      <button
+        onClick={onNext}
+        disabled={!reason}
+        style={{
+          width:"100%", background: reason ? "#c86c3a18" : "none",
+          border:`1px solid ${reason ? "#c86c3a66" : "#2a2018"}`,
+          color: reason ? "#e8c8a8" : "#3a3030",
+          borderRadius:12, padding:"12px 0", fontSize:14,
+          fontWeight:700, cursor: reason ? "pointer" : "not-allowed",
+          marginBottom:10, transition:"all 0.2s",
+        }}
+      >Continue →</button>
+      <button
+        onClick={onBack}
+        style={{
+          width:"100%", background:"none", border:"1px solid #2a2018",
+          color:"#5a5050", borderRadius:12, padding:"11px 0", fontSize:13,
+          cursor:"pointer",
+        }}
+      >← Back</button>
+    </div>
+  );
+}
+
+function UnsubscribeStep2({ onKeep, onConfirm }) {
+  return (
+    <div>
+      <h2 style={{color:"#f0e6d3", fontSize:17, fontWeight:700, margin:"0 0 10px"}}>Are you sure?</h2>
+      <p style={{color:"#8a7a6a", fontSize:13, lineHeight:1.6, margin:"0 0 28px"}}>
+        You can keep practicing until the end of your current billing period.
+      </p>
+
       <button
         onClick={onKeep}
         style={{
