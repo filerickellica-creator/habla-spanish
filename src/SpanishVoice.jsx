@@ -116,6 +116,7 @@ export default function SpanishVoice({ user, userData, controls }) {
   const [showTranslations, setShowTranslations] = useState(true);
   const [hintLoading, setHintLoading] = useState(false);
   const [hint, setHint] = useState("");
+  const [lastAiText, setLastAiText] = useState("");
   const [grammarLoading, setGrammarLoading] = useState(false);
   const [corrections, setCorrections] = useState({});
 
@@ -142,11 +143,11 @@ export default function SpanishVoice({ user, userData, controls }) {
     synthRef.current.cancel();
   };
 
-  const speak = useCallback((text) => {
+  const speak = useCallback((text, rate = 0.92) => {
     synthRef.current.cancel();
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = "es-ES";
-    utter.rate = 0.92;
+    utter.rate = rate;
     utter.pitch = 1.05;
     const voices = synthRef.current.getVoices();
     const spanishVoice = voices.find(v => v.lang.startsWith("es"));
@@ -173,6 +174,7 @@ export default function SpanishVoice({ user, userData, controls }) {
       setAiText(reply);
       const updated = [...currentMessages, { role: "user", text: userText }, { role: "ai", text: reply }];
       setMessages(updated);
+      setLastAiText(extractSpanishOnly(reply));
       speak(extractSpanishOnly(reply));
       return updated;
     } catch {
@@ -260,6 +262,7 @@ export default function SpanishVoice({ user, userData, controls }) {
       const reply = data.content?.find(b => b.type === "text")?.text || "¡Hola!";
       setAiText(reply);
       setMessages([{ role: "ai", text: reply }]);
+      setLastAiText(extractSpanishOnly(reply));
       speak(extractSpanishOnly(reply));
     } catch {
       setError("Connection error.");
@@ -498,6 +501,14 @@ export default function SpanishVoice({ user, userData, controls }) {
               style={{ width: 80, height: 80, borderRadius: "50%", background: isListening ? `radial-gradient(circle, ${accentColor}, ${accentColor}cc)` : isThinking || isSpeaking ? "#18181f" : `radial-gradient(circle, #1e1e2a, #16161e)`, border: `2.5px solid ${isListening ? accentColor : isThinking || isSpeaking ? "#2a2a38" : "#2a2a42"}`, cursor: isThinking || isSpeaking ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, transition: "all 0.2s", boxShadow: isListening ? `0 0 30px ${accentColor}60, 0 0 60px ${accentColor}30` : "0 4px 20px #00000060", animation: isListening ? "pulse 1s ease infinite" : "none", userSelect: "none", WebkitUserSelect: "none" }}>
               {isThinking ? "⌛" : isSpeaking ? "🔊" : "🎙️"}
             </button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button onClick={() => lastAiText && speak(lastAiText)} disabled={!lastAiText || isListening || isThinking}
+              title="Repeat"
+              style={{ width: 48, height: 48, borderRadius: "50%", background: "#12121a", border: "1.5px solid #2a2a42", color: "#3a3a4a", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: !lastAiText || isListening || isThinking ? 0.3 : 1 }}>🔁</button>
+            <button onClick={() => lastAiText && speak(lastAiText, 0.55)} disabled={!lastAiText || isListening || isThinking}
+              title="Slow down"
+              style={{ width: 48, height: 48, borderRadius: "50%", background: "#12121a", border: "1.5px solid #2a2a42", color: "#3a3a4a", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: !lastAiText || isListening || isThinking ? 0.3 : 1 }}>🐢</button>
           </div>
         </div>
         <p style={{ margin: 0, fontSize: 11, color: "#2a2a38", letterSpacing: 1.5, textTransform: "uppercase" }}>
