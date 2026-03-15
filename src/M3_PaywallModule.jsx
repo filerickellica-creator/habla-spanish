@@ -23,9 +23,35 @@ export default function PaywallModule({ userData, onClose }) {
   useEffect(() => {
     async function fetchPlans() {
       try {
-        const snap = await getDoc(doc(db, "appConfig", "pricing"));
+        const snap = await getDoc(doc(db, "config", "pricing"));
         if (snap.exists()) {
-          setPlans(snap.data().plans ?? []);
+          const d = snap.data();
+          // Support both a `plans` array and flat fields (monthly_price, annual_price, etc.)
+          if (d.plans) {
+            setPlans(d.plans);
+          } else {
+            const built = [];
+            if (d.monthly_price) built.push({
+              id: "monthly",
+              title: "Monthly",
+              price: `$${d.monthly_price}`,
+              period: "/mo",
+              note: d.monthly_note || "",
+              stripeUrl: d.monthly_stripe_url || d.stripeUrl || "",
+              highlight: false,
+            });
+            if (d.annual_price) built.push({
+              id: "annual",
+              title: "Annual",
+              price: `$${d.annual_price}`,
+              period: "/yr",
+              note: d.annual_note || "",
+              stripeUrl: d.annual_stripe_url || d.stripeUrl || "",
+              highlight: true,
+              badge: d.annual_badge || "Best Value",
+            });
+            setPlans(built);
+          }
         } else {
           setPlans([]);
         }
