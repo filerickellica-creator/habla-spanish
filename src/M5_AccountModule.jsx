@@ -1,7 +1,9 @@
 import { useState } from "react";
+import PaywallModule from "./M3_PaywallModule";
 
 export default function AccountModule({ user, userData, controls, onClose }) {
   const [signingOut, setSigningOut] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -93,13 +95,15 @@ export default function AccountModule({ user, userData, controls, onClose }) {
 
         {/* Upgrade button — only show for trial/expired */}
         {userData?.subscriptionStatus !== "active" && (
-          <a href="#upgrade" style={{
-            display:"block", textAlign:"center",
-            background:"#c86c3a", color:"#fff",
+          <button onClick={() => setShowPaywall(true)} style={{
+            display:"block", width:"100%", textAlign:"center",
+            background:"#c86c3a", color:"#fff", border:"none",
             borderRadius:12, padding:"12px 0", fontSize:14, fontWeight:700,
-            textDecoration:"none", marginBottom:12,
-            transition:"opacity 0.2s",
-          }}>Upgrade to Premium →</a>
+            cursor:"pointer", marginBottom:12, transition:"opacity 0.2s",
+          }}>Upgrade to Premium →</button>
+        )}
+        {showPaywall && (
+          <PaywallModule userData={userData} onClose={() => setShowPaywall(false)} />
         )}
 
         {/* Sign out */}
