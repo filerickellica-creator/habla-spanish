@@ -4,6 +4,7 @@ import { getAuth, onAuthStateChanged,
          signInWithEmailAndPassword,
          createUserWithEmailAndPassword,
          sendPasswordResetEmail,
+         sendEmailVerification,
          updateProfile, signOut }          from "firebase/auth";
 import { getFirestore, doc, getDoc,
          setDoc, onSnapshot, serverTimestamp }         from "firebase/firestore";
@@ -61,6 +62,12 @@ export default function AuthModule({ onReady }) {
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (unsubSession) { unsubSession(); unsubSession = null; }
       if (fbUser) {
+        // Block unverified emails
+        if (!fbUser.emailVerified) {
+          setUser(fbUser);
+          setPhase("verify-email");
+          return;
+        }
         const data = await fetchOrCreateUserDoc(fbUser);
         const userRef = doc(db, "users", fbUser.uid);
         const localToken = localStorage.getItem(SESSION_KEY);
@@ -103,6 +110,7 @@ export default function AuthModule({ onReady }) {
   const controls = { signOut: handleSignOut, refreshUserData };
 
   if (phase === "loading") return <SplashScreen />;
+  if (phase === "verify-email") return <VerifyEmailScreen auth={auth} user={user} />;
   if (phase === "ready") return (
     <AuthContext.Provider value={{ user, userData, controls }}>
       {onReady(user, userData, controls)}
@@ -112,6 +120,62 @@ export default function AuthModule({ onReady }) {
     <AuthContext.Provider value={{ user: null, userData: null, controls }}>
       <AuthWall auth={auth} />
     </AuthContext.Provider>
+  );
+}
+
+function VerifyEmailScreen({ auth, user }) {
+  const [resent, setResent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const resend = async () => {
+    setBusy(true); setErr("");
+    try {
+      await sendEmailVerification(user);
+      setResent(true);
+    } catch { setErr("Could not send email. Try again in a minute."); }
+    finally { setBusy(false); }
+  };
+
+  const checkVerified = async () => {
+    setBusy(true); setErr("");
+    try {
+      await user.reload();
+      if (user.emailVerified) {
+        window.location.reload();
+      } else {
+        setErr("Email not verified yet. Check your inbox and click the link.");
+      }
+    } catch { setErr("Could not check. Try again."); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div style={css.root}>
+      <style>{globalCSS}</style>
+      <div style={css.ambient} />
+      <div style={{ ...css.card, textAlign: "center" }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>📬</div>
+        <h2 style={{ color: "#e8e0d5", fontSize: 20, fontWeight: 800, margin: "0 0 8px", fontFamily: "Georgia, serif" }}>Verify your email</h2>
+        <p style={{ color: "#6b6560", fontSize: 13, fontFamily: "sans-serif", lineHeight: 1.7, margin: "0 0 20px" }}>
+          We sent a verification link to<br />
+          <strong style={{ color: "#c8b896" }}>{user?.email}</strong><br />
+          Please check your inbox and click the link.
+        </p>
+        {err && <div style={{ ...css.errorBox, textAlign: "left", marginBottom: 12 }}><span>!</span><span>{err}</span></div>}
+        <button onClick={checkVerified} disabled={busy} style={{ ...css.primaryBtn, marginBottom: 10 }}>
+          {busy ? "Checking..." : "I've verified my email"}
+        </button>
+        <button onClick={resend} disabled={busy || resent} style={{ ...css.ghostBtn, width: "100%", textAlign: "center", padding: "10px 0" }}>
+          {resent ? "Email sent! Check your inbox." : "Resend verification email"}
+        </button>
+        <div style={{ borderTop: "1px solid #1a1a26", marginTop: 18, paddingTop: 14 }}>
+          <button onClick={() => { localStorage.removeItem(SESSION_KEY); signOut(auth); }} style={{ ...css.ghostBtn, color: "#5a5050", textDecoration: "none", fontSize: 12, padding: 0 }}>
+            Sign out and use a different email
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -158,6 +222,35 @@ function LoginForm({ auth, go }) {
   );
 }
 
+function validatePassword(pw) {
+  if (pw.length < 8) return "Password must be at least 8 characters.";
+  if (!/[A-Z]/.test(pw)) return "Password must include an uppercase letter.";
+  if (!/[a-z]/.test(pw)) return "Password must include a lowercase letter.";
+  if (!/[0-9]/.test(pw)) return "Password must include a number.";
+  if (!/[^A-Za-z0-9]/.test(pw)) return "Password must include a special character (!@#$%&*).";
+  return null;
+}
+
+function PasswordStrength({ pw }) {
+  const checks = [
+    { label: "8+ characters", pass: pw.length >= 8 },
+    { label: "Uppercase (A-Z)", pass: /[A-Z]/.test(pw) },
+    { label: "Lowercase (a-z)", pass: /[a-z]/.test(pw) },
+    { label: "Number (0-9)", pass: /[0-9]/.test(pw) },
+    { label: "Special (!@#$%&*)", pass: /[^A-Za-z0-9]/.test(pw) },
+  ];
+  if (!pw) return null;
+  return (
+    <div style={{ marginTop: 6, marginBottom: 8 }}>
+      {checks.map(c => (
+        <div key={c.label} style={{ fontSize: 11, fontFamily: "sans-serif", color: c.pass ? "#4ade80" : "#5a5050", display: "flex", alignItems: "center", gap: 6, lineHeight: 1.8 }}>
+          <span>{c.pass ? "✓" : "○"}</span><span>{c.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SignupForm({ auth, go }) {
   const [name,  setName]  = useState("");
   const [email, setEmail] = useState("");
@@ -170,11 +263,13 @@ function SignupForm({ auth, go }) {
     e.preventDefault(); setErr("");
     if (!agreed) { setErr("Please accept the Terms of Service and Privacy Policy."); return; }
     if (!name.trim())  { setErr("Please enter your name."); return; }
-    if (pw.length < 6) { setErr("Password must be at least 6 characters."); return; }
+    const pwErr = validatePassword(pw);
+    if (pwErr) { setErr(pwErr); return; }
     setBusy(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
       await updateProfile(cred.user, { displayName: name.trim() });
+      await sendEmailVerification(cred.user);
     } catch (ex) { setErr(friendlyErr(ex.code)); }
     finally      { setBusy(false); }
   };
@@ -183,7 +278,8 @@ function SignupForm({ auth, go }) {
       <TextField label="Your name" type="text"  value={name}  set={setName}  placeholder="Maria Garcia" />
       <TextField label="Email"     type="email" value={email} set={setEmail} placeholder="you@example.com" />
       <PwField   label="Password"  value={pw}   set={setPw}   show={show}
-                 toggle={() => setShow(v => !v)} hint="Minimum 6 characters" />
+                 toggle={() => setShow(v => !v)} hint="" />
+      <PasswordStrength pw={pw} />
       {err && <ErrBox msg={err} />}
       <AgreeCheckbox agreed={agreed} setAgreed={setAgreed} />
       <PrimaryBtn busy={busy} label="Create Account" />
