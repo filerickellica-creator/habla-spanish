@@ -1,65 +1,22 @@
-import { useState, useEffect } from "react";
-import { initializeApp, getApps }   from "firebase/app";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { useState } from "react";
 
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0",
-  authDomain:        "habla-espanyol.firebaseapp.com",
-  projectId:         "habla-espanyol",
-  storageBucket:     "habla-espanyol.firebasestorage.app",
-  messagingSenderId: "92424848474",
-  appId:             "1:92424848474:web:80612d9b22f0f391ba4463",
-};
-
-const firebaseApp = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
-const db = getFirestore(firebaseApp);
+// TODO: Replace with your live Lemon Squeezy checkout URL once the store is active
+const PLANS = [
+  {
+    id:        "monthly",
+    title:     "Monthly",
+    price:     "$6.99",
+    period:    "/mo",
+    note:      "",
+    url:       "https://habla-espanyol.lemonsqueezy.com/checkout", // placeholder
+    highlight: false,
+    badge:     null,
+  },
+];
 
 export default function PaywallModule({ userData, onClose }) {
-  const [hover, setHover]   = useState(null);
-  const [plans, setPlans]   = useState(null);
-
+  const [hover, setHover] = useState(null);
   const name = userData?.name || "there";
-
-  useEffect(() => {
-    async function fetchPlans() {
-      try {
-        const snap = await getDoc(doc(db, "config", "pricing"));
-        if (snap.exists()) {
-          const d = snap.data();
-          if (d.plans) {
-            setPlans(d.plans);
-          } else {
-            const built = [];
-            if (d.monthly_price) built.push({
-              id: "monthly",
-              title: "Monthly",
-              price: `$${d.monthly_price}`,
-              period: "/mo",
-              note: d.monthly_note || "",
-              url: d.monthly_url || "",
-              highlight: false,
-            });
-            if (d.annual_price) built.push({
-              id: "annual",
-              title: "Annual",
-              price: `$${d.annual_price}`,
-              period: "/yr",
-              note: d.annual_note || "",
-              url: d.annual_url || "",
-              highlight: true,
-              badge: d.annual_badge || "Best Value",
-            });
-            setPlans(built);
-          }
-        } else {
-          setPlans([]);
-        }
-      } catch {
-        setPlans([]);
-      }
-    }
-    fetchPlans();
-  }, []);
 
   return (
     <div style={{
@@ -114,29 +71,22 @@ export default function PaywallModule({ userData, onClose }) {
       <div style={{
         display:"flex", gap:16, flexWrap:"wrap",
         justifyContent:"center", marginBottom:24,
-        minHeight:200,
       }}>
-        {plans === null ? (
-          <p style={{color:"#8a7a6a", fontSize:13, alignSelf:"center"}}>Loading plans…</p>
-        ) : plans.length === 0 ? (
-          <p style={{color:"#8a7a6a", fontSize:13, alignSelf:"center"}}>No plans available right now.</p>
-        ) : (
-          plans.map(plan => (
-            <PricingCard
-              key={plan.id}
-              badge={plan.badge}
-              title={plan.title}
-              price={plan.price}
-              period={plan.period}
-              note={plan.note}
-              url={plan.url}
-              highlight={plan.highlight ?? false}
-              hover={hover === plan.id}
-              onHover={setHover}
-              id={plan.id}
-            />
-          ))
-        )}
+        {PLANS.map(plan => (
+          <PricingCard
+            key={plan.id}
+            badge={plan.badge}
+            title={plan.title}
+            price={plan.price}
+            period={plan.period}
+            note={plan.note}
+            url={plan.url}
+            highlight={plan.highlight}
+            hover={hover === plan.id}
+            onHover={setHover}
+            id={plan.id}
+          />
+        ))}
       </div>
 
       <div style={{
@@ -191,7 +141,7 @@ function PricingCard({ badge, title, price, period, note, url, highlight, hover,
         <span style={{color:"#f0e6d3", fontSize:36, fontWeight:800}}>{price}</span>
         <span style={{color:"#8a7a6a", fontSize:13}}>{period}</span>
       </p>
-      <p style={{color:"#c8956c", fontSize:12, margin:"0 0 20px"}}>{note}</p>
+      {note && <p style={{color:"#c8956c", fontSize:12, margin:"0 0 20px"}}>{note}</p>}
       <div style={{
         background: highlight ? "#c86c3a" : "#1e1a14",
         border: `1px solid ${highlight ? "#c86c3a" : "#c8956c44"}`,
