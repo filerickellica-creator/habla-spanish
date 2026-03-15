@@ -518,7 +518,8 @@ export default function SpanishVoice({ user, userData, controls }) {
           {isListening ? "Release to send" : "Hold to speak"}
         </p>
       </div>
-      {showAccount && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user?.email}} controls={controls} onClose={() => setShowAccount(false)} />)}
+      {showAccount && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user?.email}} controls={controls} onClose={() => setShowAccount(false)} onSubscribe={() => { setShowAccount(false); setShowPaywall(true); }} />)}
+      {showPaywall && <PaywallModule userData={userData} onClose={() => setShowPaywall(false)} />}
     </div>
   );
 }
