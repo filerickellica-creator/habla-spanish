@@ -4,6 +4,7 @@ import { getAuth, onAuthStateChanged,
          signInWithEmailAndPassword,
          createUserWithEmailAndPassword,
          sendPasswordResetEmail,
+         sendEmailVerification,
          updateProfile, signOut }          from "firebase/auth";
 import { getFirestore, doc, getDoc,
          setDoc, onSnapshot, serverTimestamp }         from "firebase/firestore";
@@ -141,7 +142,14 @@ function LoginForm({ auth, go }) {
   const [err,   setErr]   = useState("");
   const submit = async (e) => {
     e.preventDefault(); setErr(""); setBusy(true);
-    try { await signInWithEmailAndPassword(auth, email.trim(), pw); }
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), pw);
+      if (!cred.user.emailVerified) {
+        await sendEmailVerification(cred.user);
+        await signOut(auth);
+        setErr("Please verify your email first. A new verification link has been sent.");
+      }
+    }
     catch (ex) { setErr(friendlyErr(ex.code)); }
     finally    { setBusy(false); }
   };
@@ -158,32 +166,76 @@ function LoginForm({ auth, go }) {
   );
 }
 
+const pwStrength = (pw) => {
+  const checks = [pw.length >= 8, /[A-Z]/.test(pw), /[a-z]/.test(pw), /[0-9]/.test(pw), /[^A-Za-z0-9]/.test(pw)];
+  return checks.filter(Boolean).length;
+};
+const pwStrengthLabel = (s) => ["", "Weak", "Weak", "Fair", "Good", "Strong"][s];
+const pwStrengthColor = (s) => ["#2a2a38", "#c86c6c", "#c86c6c", "#c8b86c", "#6cbf8a", "#6cbf8a"][s];
+
 function SignupForm({ auth, go }) {
-  const [name,  setName]  = useState("");
-  const [email, setEmail] = useState("");
-  const [pw,    setPw]    = useState("");
-  const [show,  setShow]  = useState(false);
-  const [busy,  setBusy]  = useState(false);
-  const [err,   setErr]   = useState("");
-  const [agreed, setAgreed] = useState(false);
+  const [name,    setName]    = useState("");
+  const [email,   setEmail]   = useState("");
+  const [pw,      setPw]      = useState("");
+  const [pw2,     setPw2]     = useState("");
+  const [show,    setShow]    = useState(false);
+  const [show2,   setShow2]   = useState(false);
+  const [busy,    setBusy]    = useState(false);
+  const [err,     setErr]     = useState("");
+  const [agreed,  setAgreed]  = useState(false);
+  const [sent,    setSent]    = useState(false);
+
+  const strength = pwStrength(pw);
+
   const submit = async (e) => {
     e.preventDefault(); setErr("");
-    if (!agreed) { setErr("Please accept the Terms of Service and Privacy Policy."); return; }
-    if (!name.trim())  { setErr("Please enter your name."); return; }
-    if (pw.length < 6) { setErr("Password must be at least 6 characters."); return; }
+    if (!name.trim())         { setErr("Please enter your name."); return; }
+    if (strength < 3)         { setErr("Password is too weak. Use 8+ chars with uppercase, number, and symbol."); return; }
+    if (pw !== pw2)           { setErr("Passwords do not match."); return; }
+    if (!agreed)              { setErr("Please accept the Terms of Service and Privacy Policy."); return; }
     setBusy(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
       await updateProfile(cred.user, { displayName: name.trim() });
+      await sendEmailVerification(cred.user);
+      setSent(true);
     } catch (ex) { setErr(friendlyErr(ex.code)); }
     finally      { setBusy(false); }
   };
+
+  if (sent) return (
+    <div style={css.form}>
+      <div style={css.successBox}>
+        <div style={{ fontSize: 28, marginBottom: 8 }}>📬</div>
+        <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 4 }}>Verify your email</div>
+        <div style={{ fontSize: 13, color: "#6b6560", lineHeight: 1.6 }}>
+          A verification link was sent to <strong style={{ color: "#c8b896" }}>{email}</strong>.<br/>
+          Click the link to activate your account, then sign in.
+        </div>
+      </div>
+      <GhostBtn label="Back to sign in" onClick={() => go("login")} />
+    </div>
+  );
+
   return (
     <form onSubmit={submit} style={css.form} noValidate>
       <TextField label="Your name" type="text"  value={name}  set={setName}  placeholder="Maria Garcia" />
       <TextField label="Email"     type="email" value={email} set={setEmail} placeholder="you@example.com" />
-      <PwField   label="Password"  value={pw}   set={setPw}   show={show}
-                 toggle={() => setShow(v => !v)} hint="Minimum 6 characters" />
+      <PwField   label="Password"  value={pw}   set={setPw}   show={show}  toggle={() => setShow(v => !v)} />
+      {pw && (
+        <div style={{ marginTop: -10, marginBottom: 12 }}>
+          <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+            {[1,2,3,4,5].map(i => (
+              <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= strength ? pwStrengthColor(strength) : "#1e1e2a", transition: "background 0.2s" }} />
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: pwStrengthColor(strength), fontFamily: "sans-serif" }}>
+            {pwStrengthLabel(strength)} — Use 8+ chars, uppercase, number &amp; symbol
+          </div>
+        </div>
+      )}
+      <PwField   label="Repeat password" value={pw2} set={setPw2} show={show2} toggle={() => setShow2(v => !v)}
+                 hint={pw2 && pw !== pw2 ? "Passwords do not match" : pw2 && pw === pw2 ? "✓ Passwords match" : ""} hintColor={pw2 && pw !== pw2 ? "#f87171" : "#6cbf8a"} />
       {err && <ErrBox msg={err} />}
       <AgreeCheckbox agreed={agreed} setAgreed={setAgreed} />
       <PrimaryBtn busy={busy} label="Create Account" />
@@ -250,7 +302,7 @@ const TextField = ({ label, type, value, set, placeholder }) => (
            style={css.input} className="h-input" autoComplete={type === "email" ? "email" : "name"} />
   </div>
 );
-const PwField = ({ label, value, set, show, toggle, hint }) => (
+const PwField = ({ label, value, set, show, toggle, hint, hintColor }) => (
   <div style={css.field}>
     <label style={css.label}>{label}</label>
     <div style={{ position: "relative" }}>
@@ -258,7 +310,7 @@ const PwField = ({ label, value, set, show, toggle, hint }) => (
              placeholder="........" style={{ ...css.input, paddingRight: 44 }} className="h-input" autoComplete="current-password" />
       <button type="button" onClick={toggle} style={css.eye} tabIndex={-1}>{show ? "hide" : "show"}</button>
     </div>
-    {hint && <div style={css.hint}>{hint}</div>}
+    {hint && <div style={{ ...css.hint, color: hintColor || css.hint.color }}>{hint}</div>}
   </div>
 );
 const PrimaryBtn = ({ busy, label }) => (
