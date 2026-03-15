@@ -362,6 +362,7 @@ export default function SpanishVoice({ user, userData, controls }) {
           <span style={{ fontSize: 22 }}>📚</span>
           <div><div style={{ fontWeight: 700, fontSize: 14 }}>Vocabulario</div><div style={{ fontSize: 12, marginTop: 2, opacity: 0.6 }}>500 words · 8 modules · flip cards</div></div>
         </button>
+      {showAccount && <AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user?.email}} controls={controls} onClose={() => setShowAccount(false)} />}
     </div>
   );
 
