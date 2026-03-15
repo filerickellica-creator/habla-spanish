@@ -108,7 +108,7 @@ export default function PaywallModule({ userData }) {
       }}>
         {[
           "✓  Unlimited AI conversations",
-          "✓  5 Scenarios",
+          "✓  All scenarios",
           "✓  Translate English to Spanish",
           "✓  Grammar feedback",
           "✓  Vocabulary modules",
