@@ -149,11 +149,11 @@ export default function SpanishVoice({ user, userData, controls }) {
     synthRef.current.cancel();
   };
 
-  const speak = useCallback((text) => {
+  const speak = useCallback((text, slow = false) => {
     synthRef.current.cancel();
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = "es-ES";
-    utter.rate = 0.92;
+    utter.rate = slow ? 0.55 : 0.92;
     utter.pitch = 1.05;
     const voices = synthRef.current.getVoices();
     const spanishVoice = voices.find(v => v.lang.startsWith("es"));
@@ -454,8 +454,22 @@ export default function SpanishVoice({ user, userData, controls }) {
             <div style={{ maxWidth: "80%", padding: "12px 16px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: m.role === "user" ? `${accentColor}25` : "#18181f", border: `1px solid ${m.role === "user" ? accentColor + "50" : "#2a2a38"}`, color: m.role === "user" ? "#e8d5c0" : "#d8d0c8", fontSize: 15, lineHeight: 1.65 }}>
               {m.role === "ai" && !showTranslations ? extractSpanishOnly(m.text) : m.text}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, padding: "0 4px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, padding: "0 4px", flexWrap: "wrap" }}>
               <div style={{ fontSize: 10, color: "#3a3a4a" }}>{m.role === "ai" ? `🇪🇸 ${scenario?.label}` : "Tú"}</div>
+              {m.role === "ai" && status === "idle" && (
+                <>
+                  <button onClick={() => speak(extractSpanishOnly(m.text))}
+                    style={{ background: "none", border: "1px solid #2a2a42", color: "#4a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a42"; e.currentTarget.style.color = "#4a4a6a"; }}
+                  >🔊 Repeat</button>
+                  <button onClick={() => speak(extractSpanishOnly(m.text), true)}
+                    style={{ background: "none", border: "1px solid #2a2a42", color: "#4a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a42"; e.currentTarget.style.color = "#4a4a6a"; }}
+                  >🐢 Repeat Slowly</button>
+                </>
+              )}
               {m.role === "user" && !corrections[i] && (
                 <button onClick={() => checkGrammar(m.text, i)} disabled={grammarLoading}
                   style={{ background: "none", border: "1px solid #2a2a42", color: "#4a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
