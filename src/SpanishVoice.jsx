@@ -303,21 +303,30 @@ export default function SpanishVoice({ user, userData, controls }) {
       `}</style>
       <div style={{ width: "100%", maxWidth: 420, padding: "52px 24px 0", animation: "fadeUp 0.6s ease" }}>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>🇪🇸</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: "linear-gradient(135deg, #c8956c, #a87040)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  {[14, 20, 10, 18, 12, 16].map((h, i) => (
+                    <div key={i} style={{ width: 2.5, height: h, background: "#fff", borderRadius: 2 }} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 32, fontWeight: 900, margin: 0, color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
+                <p style={{ margin: 0, fontSize: 9, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Speak Spanish. Live it.</p>
+              </div>
+            </div>
             <button onClick={() => setShowAccount(true)} style={{
               background: "none", border: "1px solid #2a2a38", color: "#3a3a4a",
               borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer",
-              marginTop: 8, transition: "all 0.2s",
+              transition: "all 0.2s",
             }}
               onMouseEnter={e => { e.currentTarget.style.color = "#a78bfa"; e.currentTarget.style.borderColor = "#a78bfa"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}
             >👤 Account</button>
-            <button onClick={() => controls && controls.signOut()} style={{ background: "none", border: "1px solid #2a2a38", color: "#3a3a4a", borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer", marginTop: 8, marginLeft: 6, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.borderColor = "#f87171"; }} onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}>🚪 Sign Out</button>
           </div>
-          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, margin: "0 0 6px", color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
-          <p style={{ margin: 0, fontSize: 13, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Voice Spanish Practice</p>
-          <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak naturally. Your AI conversation partner listens, responds in Spanish, and helps you improve.</p>
+          <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak Spanish freely. I will listen and help you improve.</p>
         </div>
         {!supported && (
           <div style={{ background: "#2a1a1a", border: "1px solid #c86c6c", borderRadius: 12, padding: 16, marginBottom: 20, fontSize: 13, color: "#f87171", fontFamily: "sans-serif" }}>
@@ -347,25 +356,6 @@ export default function SpanishVoice({ user, userData, controls }) {
           </div>
         </div>
         <div>
-        {/* Translator */}
-        {isTranslatorLocked ? (
-          <div style={{ marginBottom: 28 }}>
-            <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Translate</p>
-            <button onClick={() => setShowAccount(true)} style={{ width: "100%", padding: "18px 20px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#0e0e14", cursor: "pointer", textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.5 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 22 }}>🔤</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#3a3535", fontFamily: "sans-serif" }}>English → Spanish</div>
-                  <div style={{ fontSize: 11, color: "#2a2825", fontFamily: "sans-serif", marginTop: 2 }}>Say a word or phrase to translate</div>
-                </div>
-              </div>
-              <span style={{ fontSize: 14 }}>🔒</span>
-            </button>
-          </div>
-        ) : (
-          <TranslatorModule />
-        )}
-
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {SCENARIOS.map((s, i) => {
@@ -389,6 +379,24 @@ export default function SpanishVoice({ user, userData, controls }) {
             })}
           </div>
         </div>
+        {/* Translator */}
+        {isTranslatorLocked ? (
+          <div style={{ marginBottom: 28 }}>
+            <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Translate</p>
+            <button onClick={() => setShowAccount(true)} style={{ width: "100%", padding: "18px 20px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#0e0e14", cursor: "pointer", textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.5 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 22 }}>🔤</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#3a3535", fontFamily: "sans-serif" }}>English → Spanish</div>
+                  <div style={{ fontSize: 11, color: "#2a2825", fontFamily: "sans-serif", marginTop: 2 }}>Say a word or phrase to translate</div>
+                </div>
+              </div>
+              <span style={{ fontSize: 14 }}>🔒</span>
+            </button>
+          </div>
+        ) : (
+          <TranslatorModule />
+        )}
       </div>
         <button onClick={() => setScreen("vocab")} style={{ marginTop: 20, width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#12121a", color: "#8a8075", cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 12 }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#c4b5fd"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.color = "#8a8075"; }}>
           <span style={{ fontSize: 22 }}>📚</span>
