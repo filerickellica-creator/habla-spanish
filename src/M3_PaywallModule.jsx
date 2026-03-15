@@ -1,14 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { initializeApp, getApps }   from "firebase/app";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 
-// ─── UPDATE THESE WHEN STRIPE IS READY ───────────────────────────────────────
-const STRIPE_MONTHLY_URL = "https://buy.stripe.com/PLACEHOLDER_MONTHLY";
-const STRIPE_ANNUAL_URL  = "https://buy.stripe.com/PLACEHOLDER_ANNUAL";
-// ─────────────────────────────────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0",
+  authDomain:        "habla-espanyol.firebaseapp.com",
+  projectId:         "habla-espanyol",
+  storageBucket:     "habla-espanyol.firebasestorage.app",
+  messagingSenderId: "92424848474",
+  appId:             "1:92424848474:web:80612d9b22f0f391ba4463",
+};
+
+const firebaseApp = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+const db = getFirestore(firebaseApp);
 
 export default function PaywallModule({ userData }) {
-  const [hover, setHover] = useState(null);
+  const [hover, setHover]   = useState(null);
+  const [plans, setPlans]   = useState(null); // null = loading
 
   const name = userData?.name || "there";
+
+  useEffect(() => {
+    async function fetchPlans() {
+      try {
+        const snap = await getDoc(doc(db, "appConfig", "pricing"));
+        if (snap.exists()) {
+          setPlans(snap.data().plans ?? []);
+        } else {
+          setPlans([]);
+        }
+      } catch {
+        setPlans([]);
+      }
+    }
+    fetchPlans();
+  }, []);
 
   return (
     <div style={{
@@ -19,7 +45,7 @@ export default function PaywallModule({ userData }) {
     }}>
       {/* Logo */}
       <div style={{marginBottom:8}}>
-        <span style={{fontSize:36}}>🇪��</span>
+        <span style={{fontSize:36}}>🇪🇸</span>
       </div>
       <h1 style={{
         color:"#f0e6d3", fontSize:32, fontWeight:800,
@@ -40,8 +66,8 @@ export default function PaywallModule({ userData }) {
           Hey {name} 👋
         </p>
         <p style={{color:"#8a7a6a", fontSize:14, margin:0, lineHeight:1.7}}>
-          Your free trial has ended. Upgrade to keep practicing your Spanish
-          with your AI conversation partner.
+          Better your Spanish by unlocking all features.
+          Subscribe to keep improving — cancel anytime.
         </p>
       </div>
 
@@ -49,32 +75,29 @@ export default function PaywallModule({ userData }) {
       <div style={{
         display:"flex", gap:16, flexWrap:"wrap",
         justifyContent:"center", marginBottom:24,
+        minHeight:200,
       }}>
-        {/* Annual — Best Value */}
-        <PricingCard
-          badge="Best Value"
-          title="Annual"
-          price="$39.99"
-          period="/ year"
-          note="Save 58% — just $3.33/mo"
-          url={STRIPE_ANNUAL_URL}
-          highlight={true}
-          hover={hover === "annual"}
-          onHover={setHover}
-          id="annual"
-        />
-        {/* Monthly */}
-        <PricingCard
-          title="Monthly"
-          price="$7.99"
-          period="/ month"
-          note="Cancel anytime"
-          url={STRIPE_MONTHLY_URL}
-          highlight={false}
-          hover={hover === "monthly"}
-          onHover={setHover}
-          id="monthly"
-        />
+        {plans === null ? (
+          <p style={{color:"#8a7a6a", fontSize:13, alignSelf:"center"}}>Loading plans…</p>
+        ) : plans.length === 0 ? (
+          <p style={{color:"#8a7a6a", fontSize:13, alignSelf:"center"}}>No plans available right now.</p>
+        ) : (
+          plans.map(plan => (
+            <PricingCard
+              key={plan.id}
+              badge={plan.badge}
+              title={plan.title}
+              price={plan.price}
+              period={plan.period}
+              note={plan.note}
+              url={plan.stripeUrl}
+              highlight={plan.highlight ?? false}
+              hover={hover === plan.id}
+              onHover={setHover}
+              id={plan.id}
+            />
+          ))
+        )}
       </div>
 
       {/* Features */}
@@ -85,7 +108,8 @@ export default function PaywallModule({ userData }) {
       }}>
         {[
           "✓  Unlimited AI conversations",
-          "✓  All 5 scenarios",
+          "✓  5 Scenarios",
+          "✓  Translate English to Spanish",
           "✓  Grammar feedback",
           "✓  Vocabulary modules",
           "✓  Hints & coaching",
