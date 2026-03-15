@@ -38,11 +38,11 @@ export default function PaywallModule({ userData, onClose }) {
 
   return (
     <div style={{
-      minHeight:"100vh", background:"#0e0c0a",
+      position:"fixed", inset:0, zIndex:1000,
+      background:"#0e0c0a", overflow:"auto",
       display:"flex", flexDirection:"column",
       alignItems:"center", justifyContent:"center",
       fontFamily:"sans-serif", padding:"40px 20px",
-      position:"relative",
     }}>
       {/* Back button */}
       {onClose && (
