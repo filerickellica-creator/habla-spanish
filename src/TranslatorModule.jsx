@@ -116,7 +116,7 @@ export default function TranslatorModule() {
   const busy = isListening || isThinking || isSpeaking;
 
   return (
-    <div style={{ marginBottom: 28 }}>
+    <div style={{ marginBottom: 14 }}>
       <style>{`
         @keyframes transWave { from { height: 4px; } to { height: 22px; } }
         @keyframes fadeSlide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
