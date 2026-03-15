@@ -99,7 +99,7 @@ export default function AccountModule({ user, userData, controls, onClose, onSub
             borderRadius:12, padding:"12px 0", fontSize:14, fontWeight:700,
             border:"none", marginBottom:12, cursor:"pointer",
             transition:"opacity 0.2s",
-          }}>Subscribe</button>
+          }}>Upgrade to Premium →</button>
         )}
 
         {/* Sign out */}
