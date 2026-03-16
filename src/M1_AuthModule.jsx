@@ -135,6 +135,7 @@ function VerifyEmailScreen({ user, auth }) {
   const [resent, setResent]   = useState(false);
   const [err, setErr]         = useState("");
   const [checking, setChecking] = useState(false);
+  const [autoStatus, setAutoStatus] = useState(""); // for debugging
 
   // Auto-verify if URL contains oobCode (user arrived via verification link)
   useEffect(() => {
@@ -144,14 +145,16 @@ function VerifyEmailScreen({ user, auth }) {
     if (mode === "verifyEmail" && oobCode) {
       (async () => {
         setChecking(true);
+        setAutoStatus("Applying verification code...");
         try {
           await applyActionCode(auth, oobCode);
+          setAutoStatus("Code applied! Refreshing...");
           await auth.currentUser.reload();
           await auth.currentUser.getIdToken(true);
-          // Clear URL params and reload the app
           window.location.href = window.location.origin;
         } catch (ex) {
-          // oobCode might already be used or expired - try reload anyway
+          setAutoStatus("applyActionCode error: " + (ex.code || ex.message));
+          // oobCode might already be used - try reload anyway
           try {
             await auth.currentUser.reload();
             if (auth.currentUser.emailVerified) {
@@ -160,7 +163,7 @@ function VerifyEmailScreen({ user, auth }) {
               return;
             }
           } catch (_) { /* ignore */ }
-          setErr("Verification link may have expired. Click 'Resend' to get a new one.");
+          setErr("Verification failed: " + (ex.code || ex.message));
           setChecking(false);
         }
       })();
@@ -170,12 +173,6 @@ function VerifyEmailScreen({ user, auth }) {
   const handleCheckVerified = async () => {
     setErr(""); setChecking(true);
     try {
-      // Also try applying oobCode from URL if present
-      const params  = new URLSearchParams(window.location.search);
-      const oobCode = params.get("oobCode");
-      if (oobCode) {
-        try { await applyActionCode(auth, oobCode); } catch (_) { /* may already be applied */ }
-      }
       await auth.currentUser.reload();
       if (auth.currentUser.emailVerified) {
         await auth.currentUser.getIdToken(true);
@@ -184,7 +181,7 @@ function VerifyEmailScreen({ user, auth }) {
         setErr("Email not verified yet. Check your inbox and click the link.");
       }
     } catch (ex) {
-      setErr("Could not check verification status. Please try again.");
+      setErr("Could not check: " + (ex.code || ex.message));
     } finally {
       setChecking(false);
     }
@@ -227,6 +224,11 @@ function VerifyEmailScreen({ user, auth }) {
               Click the link in your email, then come back here.
             </div>
           </div>
+          {autoStatus && (
+            <div style={{ background: "#0e1a2a", border: "1px solid #2a4a6a33", borderRadius: 9, padding: "10px 14px", fontSize: 12, color: "#7ab", fontFamily: "monospace", marginBottom: 8, wordBreak: "break-all" }}>
+              {autoStatus}
+            </div>
+          )}
           {err && <ErrBox msg={err} />}
           {resent && (
             <div style={{ ...css.successBox, background: "#0a1a12", marginBottom: 8 }}>
