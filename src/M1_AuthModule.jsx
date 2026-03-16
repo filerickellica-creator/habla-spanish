@@ -5,6 +5,7 @@ import { getAuth, onAuthStateChanged,
          createUserWithEmailAndPassword,
          sendPasswordResetEmail,
          sendEmailVerification,
+         applyActionCode,
          updateProfile, signOut }          from "firebase/auth";
 import { getFirestore, doc, getDoc,
          setDoc, onSnapshot, serverTimestamp }         from "firebase/firestore";
@@ -131,15 +132,50 @@ function VerifyEmailScreen({ user, auth }) {
   const [err, setErr]         = useState("");
   const [checking, setChecking] = useState(false);
 
+  // Auto-verify if URL contains oobCode (user arrived via verification link)
+  useEffect(() => {
+    const params  = new URLSearchParams(window.location.search);
+    const mode    = params.get("mode");
+    const oobCode = params.get("oobCode");
+    if (mode === "verifyEmail" && oobCode) {
+      (async () => {
+        setChecking(true);
+        try {
+          await applyActionCode(auth, oobCode);
+          await auth.currentUser.reload();
+          await auth.currentUser.getIdToken(true);
+          // Clear URL params and reload the app
+          window.location.href = window.location.origin;
+        } catch (ex) {
+          // oobCode might already be used or expired - try reload anyway
+          try {
+            await auth.currentUser.reload();
+            if (auth.currentUser.emailVerified) {
+              await auth.currentUser.getIdToken(true);
+              window.location.href = window.location.origin;
+              return;
+            }
+          } catch (_) { /* ignore */ }
+          setErr("Verification link may have expired. Click 'Resend' to get a new one.");
+          setChecking(false);
+        }
+      })();
+    }
+  }, [auth]);
+
   const handleCheckVerified = async () => {
     setErr(""); setChecking(true);
     try {
-      // Reload user from Firebase server to get fresh emailVerified status
+      // Also try applying oobCode from URL if present
+      const params  = new URLSearchParams(window.location.search);
+      const oobCode = params.get("oobCode");
+      if (oobCode) {
+        try { await applyActionCode(auth, oobCode); } catch (_) { /* may already be applied */ }
+      }
       await auth.currentUser.reload();
       if (auth.currentUser.emailVerified) {
-        // Force ID token refresh, then full page reload to re-trigger onAuthStateChanged
         await auth.currentUser.getIdToken(true);
-        window.location.reload();
+        window.location.href = window.location.origin;
       } else {
         setErr("Email not verified yet. Check your inbox and click the link.");
       }
