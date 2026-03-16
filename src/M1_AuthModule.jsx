@@ -62,6 +62,7 @@ export default function AuthModule({ onReady }) {
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (unsubSession) { unsubSession(); unsubSession = null; }
       if (fbUser) {
+        if (!fbUser.emailVerified) await fbUser.reload();
         const data = await fetchOrCreateUserDoc(fbUser);
         const userRef = doc(db, "users", fbUser.uid);
         const localToken = localStorage.getItem(SESSION_KEY);

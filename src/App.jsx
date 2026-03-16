@@ -93,7 +93,10 @@ function VerifyEmailScreen({ oobCode }) {
 
   useEffect(() => {
     applyActionCode(auth, oobCode)
-      .then(() => setDone(true))
+      .then(async () => {
+        if (auth.currentUser) await auth.currentUser.reload();
+        setDone(true);
+      })
       .catch(() => setErr("This verification link is invalid or has expired. Please request a new one."))
       .finally(() => setBusy(false));
   }, [oobCode]);
