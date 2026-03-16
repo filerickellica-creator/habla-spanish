@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getAuth, confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
+import { getAuth, confirmPasswordReset, verifyPasswordResetCode, applyActionCode } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import AuthModule from "./M1_AuthModule";
 import TrialModule from "./M2_TrialModule";
@@ -86,6 +86,63 @@ function ResetPasswordScreen({ oobCode }) {
   );
 }
 
+function VerifyEmailLanding({ oobCode, auth }) {
+  const [status, setStatus] = useState("verifying"); // verifying | success | error
+  const [err, setErr]       = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        await applyActionCode(auth, oobCode);
+        setStatus("success");
+      } catch (ex) {
+        setErr("This verification link is invalid or has expired. Please request a new one.");
+        setStatus("error");
+      }
+    })();
+  }, [oobCode, auth]);
+
+  const s = {
+    root:  { minHeight: "100vh", background: "#0e0e14", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 16px", fontFamily: "Georgia, serif" },
+    card:  { width: "100%", maxWidth: 400, background: "#12121a", border: "1px solid #1e1e2a", borderRadius: 20, padding: "36px 32px 28px", boxShadow: "0 24px 80px #00000070" },
+    logo:  { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 },
+    title: { fontFamily: "Georgia, serif", fontSize: 30, fontWeight: 900, color: "#e8e0d5", letterSpacing: "-1px" },
+    tag:   { margin: "0 0 26px", fontSize: 13.5, color: "#4a4540", fontStyle: "italic", fontFamily: "sans-serif" },
+    btn:   { marginTop: 6, width: "100%", padding: "13px", background: "linear-gradient(135deg, #c8956c, #a87040)", border: "none", borderRadius: 12, color: "#0e0e14", fontSize: 15, fontWeight: 800, cursor: "pointer", minHeight: 48 },
+    err:   { background: "#1e0e0e", border: "1px solid #c86c6c33", borderRadius: 9, padding: "10px 14px", fontSize: 13, color: "#f87171", fontFamily: "sans-serif", marginBottom: 12 },
+    ok:    { background: "#0a1a12", border: "1px solid #22c55e2a", borderRadius: 12, padding: "22px 18px", textAlign: "center", fontFamily: "sans-serif" },
+  };
+
+  return (
+    <div style={s.root}>
+      <div style={s.card}>
+        <div style={s.logo}><span style={{ fontSize: 28 }}>🇪🇸</span><span style={s.title}>Habla</span></div>
+        <p style={s.tag}>Email verification</p>
+        {status === "verifying" && (
+          <div style={s.ok}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>⏳</div>
+            <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 8 }}>Verifying your email...</div>
+          </div>
+        )}
+        {status === "success" && (
+          <div style={s.ok}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
+            <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 8 }}>Email verified!</div>
+            <div style={{ fontSize: 13, color: "#6b6560", marginBottom: 16 }}>Your email has been verified. You can now access Habla.</div>
+            <button style={s.btn} onClick={() => window.location.href = "/"}>Continue to Habla</button>
+          </div>
+        )}
+        {status === "error" && (
+          <div>
+            <div style={s.err}>{err}</div>
+            <button style={s.btn} onClick={() => window.location.href = "/"}>Go to Sign In</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [expired, setExpired]             = useState(false);
   const [currentUserData, setCurrentUserData] = useState(null);
@@ -97,6 +154,10 @@ export default function App() {
 
   if (mode === "resetPassword" && oobCode) {
     return <ResetPasswordScreen oobCode={oobCode} />;
+  }
+
+  if (mode === "verifyEmail" && oobCode) {
+    return <VerifyEmailLanding oobCode={oobCode} auth={auth} />;
   }
 
   return (

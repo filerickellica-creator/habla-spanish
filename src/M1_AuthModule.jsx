@@ -4,6 +4,7 @@ import { getAuth, onAuthStateChanged,
          signInWithEmailAndPassword,
          createUserWithEmailAndPassword,
          sendPasswordResetEmail,
+         sendEmailVerification,
          updateProfile, signOut }          from "firebase/auth";
 import { getFirestore, doc, getDoc,
          setDoc, onSnapshot, serverTimestamp }         from "firebase/firestore";
@@ -61,6 +62,13 @@ export default function AuthModule({ onReady }) {
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (unsubSession) { unsubSession(); unsubSession = null; }
       if (fbUser) {
+        // Block unverified users on the verify screen
+        if (!fbUser.emailVerified) {
+          setUser(fbUser);
+          setUserData(null);
+          setPhase("verify");
+          return;
+        }
         const data = await fetchOrCreateUserDoc(fbUser);
         const userRef = doc(db, "users", fbUser.uid);
         const localToken = localStorage.getItem(SESSION_KEY);
@@ -103,6 +111,7 @@ export default function AuthModule({ onReady }) {
   const controls = { signOut: handleSignOut, refreshUserData };
 
   if (phase === "loading") return <SplashScreen />;
+  if (phase === "verify") return <VerifyEmailScreen user={user} auth={auth} />;
   if (phase === "ready") return (
     <AuthContext.Provider value={{ user, userData, controls }}>
       {onReady(user, userData, controls)}
@@ -112,6 +121,94 @@ export default function AuthModule({ onReady }) {
     <AuthContext.Provider value={{ user: null, userData: null, controls }}>
       <AuthWall auth={auth} />
     </AuthContext.Provider>
+  );
+}
+
+function VerifyEmailScreen({ user, auth }) {
+  const [busy, setBusy]       = useState(false);
+  const [resent, setResent]   = useState(false);
+  const [err, setErr]         = useState("");
+  const [checking, setChecking] = useState(false);
+
+  const handleCheckVerified = async () => {
+    setErr(""); setChecking(true);
+    try {
+      await user.reload();
+      const refreshed = auth.currentUser;
+      if (refreshed && refreshed.emailVerified) {
+        // Force token refresh so onAuthStateChanged fires with updated emailVerified
+        await refreshed.getIdToken(true);
+        // Trigger a re-auth cycle by reloading
+        window.location.reload();
+      } else {
+        setErr("Email not verified yet. Please click the link in your email first.");
+      }
+    } catch (ex) {
+      setErr("Could not check verification status. Please try again.");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setErr(""); setBusy(true); setResent(false);
+    try {
+      await sendEmailVerification(user);
+      setResent(true);
+    } catch (ex) {
+      if (ex.code === "auth/too-many-requests") {
+        setErr("Too many attempts. Please wait a few minutes before trying again.");
+      } else {
+        setErr("Could not send verification email. Please try again.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem(SESSION_KEY);
+    signOut(auth);
+  };
+
+  return (
+    <div style={css.root}>
+      <style>{globalCSS}</style>
+      <div style={css.ambient} />
+      <div style={css.card}>
+        <Logo />
+        <p style={css.tagline}>Verify your email to continue</p>
+        <div style={css.form}>
+          <div style={css.successBox}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>📬</div>
+            <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 4 }}>Verify your email</div>
+            <div style={{ fontSize: 13, color: "#6b6560", lineHeight: 1.6 }}>
+              A verification link was sent to <strong style={{ color: "#c8b896" }}>{user.email}</strong>.<br/>
+              Click the link in your email, then come back here.
+            </div>
+          </div>
+          {err && <ErrBox msg={err} />}
+          {resent && (
+            <div style={{ ...css.successBox, background: "#0a1a12", marginBottom: 8 }}>
+              <div style={{ fontSize: 13, color: "#6cbf8a" }}>Verification email sent!</div>
+            </div>
+          )}
+          <button type="button" onClick={handleCheckVerified} disabled={checking}
+                  style={css.primaryBtn} className="h-btn">
+            {checking ? <span className="h-spin" style={css.spinner} /> : "I've verified my email"}
+          </button>
+          <button type="button" onClick={handleResend} disabled={busy}
+                  style={{ ...css.ghostBtn, textAlign: "center" }}>
+            {busy ? "Sending..." : "Resend verification email"}
+          </button>
+          <button type="button" onClick={handleSignOut}
+                  style={{ ...css.ghostBtn, textAlign: "center", color: "#6b6560", marginTop: 14 }}>
+            Sign out and use a different email
+          </button>
+        </div>
+        <Footer />
+      </div>
+    </div>
   );
 }
 
@@ -141,7 +238,14 @@ function LoginForm({ auth, go }) {
   const [err,   setErr]   = useState("");
   const submit = async (e) => {
     e.preventDefault(); setErr(""); setBusy(true);
-    try { await signInWithEmailAndPassword(auth, email.trim(), pw); }
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), pw);
+      if (!cred.user.emailVerified) {
+        await sendEmailVerification(cred.user);
+        setErr("Please verify your email first. A new verification link has been sent.");
+        // Don't sign out — let onAuthStateChanged show the verify screen
+      }
+    }
     catch (ex) { setErr(friendlyErr(ex.code)); }
     finally    { setBusy(false); }
   };
@@ -158,32 +262,105 @@ function LoginForm({ auth, go }) {
   );
 }
 
+const pwChecks = (pw) => ({
+  length:    pw.length >= 8,
+  uppercase: /[A-Z]/.test(pw),
+  lowercase: /[a-z]/.test(pw),
+  number:    /[0-9]/.test(pw),
+  special:   /[!@#$%&*]/.test(pw),
+});
+
+const pwStrength = (pw) => {
+  const c = pwChecks(pw);
+  return [c.length, c.uppercase, c.lowercase, c.number, c.special].filter(Boolean).length;
+};
+
+const strengthLabel = (s) => ["", "Weak", "Weak", "Fair", "Good", "Strong"][s];
+const strengthColor = (s) => ["#2a2a38", "#c86c6c", "#c86c6c", "#c8b86c", "#6cbf8a", "#6cbf8a"][s];
+
 function SignupForm({ auth, go }) {
-  const [name,  setName]  = useState("");
-  const [email, setEmail] = useState("");
-  const [pw,    setPw]    = useState("");
-  const [show,  setShow]  = useState(false);
-  const [busy,  setBusy]  = useState(false);
-  const [err,   setErr]   = useState("");
-  const [agreed, setAgreed] = useState(false);
+  const [name,    setName]    = useState("");
+  const [email,   setEmail]   = useState("");
+  const [pw,      setPw]      = useState("");
+  const [pw2,     setPw2]     = useState("");
+  const [show,    setShow]    = useState(false);
+  const [show2,   setShow2]   = useState(false);
+  const [busy,    setBusy]    = useState(false);
+  const [err,     setErr]     = useState("");
+  const [agreed,  setAgreed]  = useState(false);
+  const [done,    setDone]    = useState(false);
+
+  const strength = pwStrength(pw);
+  const checks   = pwChecks(pw);
+
   const submit = async (e) => {
     e.preventDefault(); setErr("");
-    if (!agreed) { setErr("Please accept the Terms of Service and Privacy Policy."); return; }
     if (!name.trim())  { setErr("Please enter your name."); return; }
-    if (pw.length < 6) { setErr("Password must be at least 6 characters."); return; }
+    if (strength < 3)  { setErr("Password is too weak. Use 8+ chars with uppercase, number, and symbol."); return; }
+    if (pw !== pw2)    { setErr("Passwords do not match."); return; }
+    if (!agreed)       { setErr("Please accept the Terms of Service and Privacy Policy."); return; }
     setBusy(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
       await updateProfile(cred.user, { displayName: name.trim() });
+      await sendEmailVerification(cred.user);
+      setDone(true);
     } catch (ex) { setErr(friendlyErr(ex.code)); }
     finally      { setBusy(false); }
   };
+
+  if (done) return (
+    <div style={css.form}>
+      <div style={css.successBox}>
+        <div style={{ fontSize: 28, marginBottom: 8 }}>📬</div>
+        <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 4 }}>Verify your email</div>
+        <div style={{ fontSize: 13, color: "#6b6560", lineHeight: 1.6 }}>
+          A verification link was sent to <strong style={{ color: "#c8b896" }}>{email}</strong>.<br/>
+          Click the link to activate your account, then sign in.
+        </div>
+      </div>
+      <GhostBtn label="Back to sign in" onClick={() => go("login")} />
+    </div>
+  );
+
   return (
     <form onSubmit={submit} style={css.form} noValidate>
       <TextField label="Your name" type="text"  value={name}  set={setName}  placeholder="Maria Garcia" />
       <TextField label="Email"     type="email" value={email} set={setEmail} placeholder="you@example.com" />
       <PwField   label="Password"  value={pw}   set={setPw}   show={show}
-                 toggle={() => setShow(v => !v)} hint="Minimum 6 characters" />
+                 toggle={() => setShow(v => !v)} />
+      {pw && (
+        <div style={{ marginTop: -10, marginBottom: 12 }}>
+          <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+            {[1,2,3,4,5].map(i => (
+              <div key={i} style={{ flex: 1, height: 3, borderRadius: 2,
+                background: i <= strength ? strengthColor(strength) : "#1e1e2a",
+                transition: "background 0.2s" }} />
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: strengthColor(strength), fontFamily: "sans-serif", marginBottom: 6 }}>
+            {strengthLabel(strength)} — Use 8+ chars, uppercase, number & symbol
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {[
+              [checks.length,    "8+ characters"],
+              [checks.uppercase, "Uppercase letter (A-Z)"],
+              [checks.lowercase, "Lowercase letter (a-z)"],
+              [checks.number,    "Number (0-9)"],
+              [checks.special,   "Special character (!@#$%&*)"],
+            ].map(([ok, label]) => (
+              <div key={label} style={{ fontSize: 11, fontFamily: "sans-serif",
+                color: ok ? "#6cbf8a" : "#3a3a4a", transition: "color 0.2s" }}>
+                {ok ? "\u2713" : "\u2022"} {label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <PwField   label="Repeat password" value={pw2} set={setPw2} show={show2}
+                 toggle={() => setShow2(v => !v)}
+                 hint={pw2 && pw !== pw2 ? "Passwords do not match" : pw2 && pw === pw2 ? "\u2713 Passwords match" : ""}
+                 hintColor={pw2 && pw !== pw2 ? "#f87171" : "#6cbf8a"} />
       {err && <ErrBox msg={err} />}
       <AgreeCheckbox agreed={agreed} setAgreed={setAgreed} />
       <PrimaryBtn busy={busy} label="Create Account" />
@@ -250,7 +427,7 @@ const TextField = ({ label, type, value, set, placeholder }) => (
            style={css.input} className="h-input" autoComplete={type === "email" ? "email" : "name"} />
   </div>
 );
-const PwField = ({ label, value, set, show, toggle, hint }) => (
+const PwField = ({ label, value, set, show, toggle, hint, hintColor }) => (
   <div style={css.field}>
     <label style={css.label}>{label}</label>
     <div style={{ position: "relative" }}>
@@ -258,7 +435,7 @@ const PwField = ({ label, value, set, show, toggle, hint }) => (
              placeholder="........" style={{ ...css.input, paddingRight: 44 }} className="h-input" autoComplete="current-password" />
       <button type="button" onClick={toggle} style={css.eye} tabIndex={-1}>{show ? "hide" : "show"}</button>
     </div>
-    {hint && <div style={css.hint}>{hint}</div>}
+    {hint && <div style={{ ...css.hint, color: hintColor || css.hint.color }}>{hint}</div>}
   </div>
 );
 const PrimaryBtn = ({ busy, label }) => (
