@@ -67,14 +67,7 @@ export default function AuthModule({ onReady }) {
         if (!localToken) {
           const newToken = generateSessionToken();
           localStorage.setItem(SESSION_KEY, newToken);
-          try {
-            await setDoc(userRef, { sessionToken: newToken }, { merge: true });
-          } catch (e) {
-            console.error("Failed to write session token:", e);
-            localStorage.removeItem(SESSION_KEY);
-            await signOut(auth);
-            return;
-          }
+          await setDoc(userRef, { sessionToken: newToken }, { merge: true });
         } else if (localToken !== data.sessionToken) {
           localStorage.removeItem(SESSION_KEY);
           await signOut(auth);
@@ -90,8 +83,6 @@ export default function AuthModule({ onReady }) {
             localStorage.removeItem(SESSION_KEY);
             signOut(auth);
           }
-        }, (err) => {
-          console.error("Session listener error:", err);
         });
       } else {
         setUser(null);
@@ -108,14 +99,7 @@ export default function AuthModule({ onReady }) {
     if (snap.exists()) setUserData(snap.data());
   }, [user]);
 
-  const handleSignOut = useCallback(async () => {
-    localStorage.removeItem(SESSION_KEY);
-    if (user) {
-      try { await setDoc(doc(db, "users", user.uid), { sessionToken: null }, { merge: true }); }
-      catch (e) { console.error("Failed to clear session token:", e); }
-    }
-    return signOut(auth);
-  }, [user]);
+  const handleSignOut = useCallback(() => { localStorage.removeItem(SESSION_KEY); return signOut(auth); }, []);
   const controls = { signOut: handleSignOut, refreshUserData };
 
   if (phase === "loading") return <SplashScreen />;

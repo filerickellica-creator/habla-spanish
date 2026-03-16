@@ -56,7 +56,6 @@ export default function TranslatorModule() {
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
   const lastTranscriptRef = useRef("");
-  const recognitionTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) setSupported(false);
@@ -69,11 +68,9 @@ export default function TranslatorModule() {
     const voices = synthRef.current.getVoices();
     const spanishVoice = voices.find(v => v.lang.startsWith("es"));
     if (spanishVoice) utter.voice = spanishVoice;
-    // iOS: speechSynthesis called outside user-gesture context fails silently — reset after 1s if never started
-    const fallback = setTimeout(() => setStatus("idle"), 1000);
-    utter.onstart = () => { clearTimeout(fallback); setStatus("speaking"); };
+    utter.onstart = () => setStatus("speaking");
     utter.onend = () => setStatus("idle");
-    utter.onerror = () => { clearTimeout(fallback); setStatus("idle"); };
+    utter.onerror = () => setStatus("idle");
     synthRef.current.speak(utter);
   }, []);
 
@@ -81,23 +78,14 @@ export default function TranslatorModule() {
     if (!text.trim()) return;
     setStatus("thinking"); setError(""); setSpanishText("");
     try {
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 15000)
-      );
-      const translation = await Promise.race([
-        callCloudFn({
-          system: "You are a Spanish translator. Translate English to Spanish. Output ONLY the Spanish text. Never output English. Never explain. Just the Spanish translation.",
-          messages: [{ role: "user", content: `Translate this to Spanish: ${text.trim()}` }],
-          max_tokens: 300,
-        }),
-        timeout,
-      ]);
-      if (translation) { setSpanishText(translation); setStatus("idle"); speakSpanish(translation); }
+      const translation = await callCloudFn({
+        system: "You are a Spanish translator. Translate English to Spanish. Output ONLY the Spanish text. Never output English. Never explain. Just the Spanish translation.",
+        messages: [{ role: "user", content: `Translate this to Spanish: ${text.trim()}` }],
+        max_tokens: 300,
+      });
+      if (translation) { setSpanishText(translation); speakSpanish(translation); }
       else { setError("No translation returned."); setStatus("idle"); }
-    } catch (err) {
-      setError(err.message === "timeout" ? "Request timed out. Try again." : "Connection error. Try again.");
-      setStatus("idle");
-    }
+    } catch { setError("Connection error. Try again."); setStatus("idle"); }
   }, [speakSpanish]);
 
   const startListening = useCallback(() => {
@@ -112,20 +100,11 @@ export default function TranslatorModule() {
       setEnglishText(t); lastTranscriptRef.current = t;
     };
     recognition.onend = () => {
-      clearTimeout(recognitionTimeoutRef.current);
       const final = lastTranscriptRef.current;
-      // Small delay lets iOS WebKit release the audio session before initiating network request
-      if (final?.trim()) setTimeout(() => translate(final.trim()), 300); else setStatus("idle");
+      if (final?.trim()) translate(final.trim()); else setStatus("idle");
     };
-    recognition.onerror = (e) => {
-      clearTimeout(recognitionTimeoutRef.current);
-      if (e.error === "no-speech" || e.error === "aborted") { setStatus("idle"); }
-      else { setError("Couldn't hear you. Try again."); setStatus("idle"); }
-    };
-    recognitionRef.current = recognition;
-    recognition.start();
-    // Safety timeout: force-stop recognition after 15s to prevent infinite freeze
-    recognitionTimeoutRef.current = setTimeout(() => { recognition.stop(); }, 15000);
+    recognition.onerror = () => { setError("Couldn't hear you. Try again."); setStatus("idle"); };
+    recognitionRef.current = recognition; recognition.start();
   }, [status, translate]);
 
   const stopListening = useCallback(() => { recognitionRef.current?.stop(); }, []);
@@ -221,8 +200,8 @@ export default function TranslatorModule() {
               <button
                 onMouseDown={supported && !busy ? startListening : undefined}
                 onMouseUp={isListening ? stopListening : undefined}
-                onTouchStart={supported && !busy ? (e) => { e.preventDefault(); startListening(); } : undefined}
-                onTouchEnd={(e) => { e.preventDefault(); stopListening(); }}
+                onTouchStart={supported && !busy ? startListening : undefined}
+                onTouchEnd={isListening ? stopListening : undefined}
                 disabled={!supported || (busy && !isListening)}
                 style={{ width: 58, height: 58, borderRadius: "50%", background: isListening ? TRANSLATOR_COLOR : isSpeaking || isThinking ? "#1e1e2a" : TRANSLATOR_COLOR + "22", border: `2px solid ${isListening ? TRANSLATOR_COLOR : TRANSLATOR_COLOR + "50"}`, cursor: supported && !busy ? "pointer" : isListening ? "pointer" : "default", color: isListening ? "#0e0e14" : TRANSLATOR_COLOR, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: !supported || (busy && !isListening) ? 0.4 : 1, boxShadow: isListening ? `0 0 24px ${TRANSLATOR_COLOR}60` : "none" }}>
                 <MicIcon size={22} />
