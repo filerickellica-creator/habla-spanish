@@ -153,7 +153,7 @@ function VerifyEmailScreen({ user, auth }) {
   const handleResend = async () => {
     setErr(""); setBusy(true); setResent(false);
     try {
-      await sendEmailVerification(user, { url: APP_URL, handleCodeInApp: false });
+      await sendEmailVerification(user, { url: APP_URL, handleCodeInApp: true });
       setResent(true);
     } catch (ex) {
       if (ex.code === "auth/too-many-requests") {
@@ -241,7 +241,7 @@ function LoginForm({ auth, go }) {
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), pw);
       if (!cred.user.emailVerified) {
-        await sendEmailVerification(cred.user, { url: APP_URL, handleCodeInApp: false });
+        await sendEmailVerification(cred.user, { url: APP_URL, handleCodeInApp: true });
         setErr("Please verify your email first. A new verification link has been sent.");
         // Don't sign out — let onAuthStateChanged show the verify screen
       }
