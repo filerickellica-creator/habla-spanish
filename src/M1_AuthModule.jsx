@@ -64,12 +64,16 @@ export default function AuthModule({ onReady }) {
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (unsubSession) { unsubSession(); unsubSession = null; }
       if (fbUser) {
-        // Block unverified users on the verify screen
+        // Block unverified users — but always re-check with server first,
+        // because local cache may be stale after verification in another tab.
         if (!fbUser.emailVerified) {
-          setUser(fbUser);
-          setUserData(null);
-          setPhase("verify");
-          return;
+          try { await fbUser.reload(); } catch (_) { /* offline fallback */ }
+          if (!auth.currentUser?.emailVerified) {
+            setUser(auth.currentUser || fbUser);
+            setUserData(null);
+            setPhase("verify");
+            return;
+          }
         }
         const data = await fetchOrCreateUserDoc(fbUser);
         const userRef = doc(db, "users", fbUser.uid);

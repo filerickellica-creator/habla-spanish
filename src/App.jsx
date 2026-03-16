@@ -94,6 +94,11 @@ function VerifyEmailLanding({ oobCode, auth }) {
     (async () => {
       try {
         await applyActionCode(auth, oobCode);
+        // Update cached user so persistence has emailVerified: true
+        if (auth.currentUser) {
+          await auth.currentUser.reload();
+          await auth.currentUser.getIdToken(true);
+        }
         setStatus("success");
       } catch (ex) {
         setErr("This verification link is invalid or has expired. Please request a new one.");
