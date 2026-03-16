@@ -218,7 +218,7 @@ function VerifyEmailScreen({ user, auth }) {
         <div style={css.form}>
           <div style={css.successBox}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>📬</div>
-            <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 4 }}>Verify your email</div>
+            <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 4 }}>Verify your email (v3)</div>
             <div style={{ fontSize: 13, color: "#6b6560", lineHeight: 1.6 }}>
               A verification link was sent to <strong style={{ color: "#c8b896" }}>{user.email}</strong>.<br/>
               Click the link in your email, then come back here.
