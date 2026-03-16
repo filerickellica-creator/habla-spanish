@@ -62,7 +62,6 @@ export default function AuthModule({ onReady }) {
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (unsubSession) { unsubSession(); unsubSession = null; }
       if (fbUser) {
-        if (!fbUser.emailVerified) await fbUser.reload();
         const data = await fetchOrCreateUserDoc(fbUser);
         const userRef = doc(db, "users", fbUser.uid);
         const localToken = localStorage.getItem(SESSION_KEY);
@@ -105,11 +104,6 @@ export default function AuthModule({ onReady }) {
   const controls = { signOut: handleSignOut, refreshUserData };
 
   if (phase === "loading") return <SplashScreen />;
-  if (phase === "ready" && user && !user.emailVerified) return (
-    <AuthContext.Provider value={{ user, userData, controls }}>
-      <EmailVerificationGate user={user} onSignOut={controls.signOut} />
-    </AuthContext.Provider>
-  );
   if (phase === "ready") return (
     <AuthContext.Provider value={{ user, userData, controls }}>
       {onReady(user, userData, controls)}
@@ -119,58 +113,6 @@ export default function AuthModule({ onReady }) {
     <AuthContext.Provider value={{ user: null, userData: null, controls }}>
       <AuthWall auth={auth} />
     </AuthContext.Provider>
-  );
-}
-
-function EmailVerificationGate({ user, onSignOut }) {
-  const [checking, setChecking] = useState(false);
-  const [err, setErr]           = useState("");
-  const [resent, setResent]     = useState(false);
-
-  const handleCheck = async () => {
-    setErr(""); setChecking(true);
-    try {
-      await user.reload();
-      if (user.emailVerified) {
-        window.location.reload();
-      } else {
-        setErr("Email not verified yet. Check your inbox and click the link.");
-      }
-    } catch { setErr("Could not check verification status. Please try again."); }
-    finally { setChecking(false); }
-  };
-
-  const handleResend = async () => {
-    setErr(""); setResent(false);
-    try {
-      await sendEmailVerification(user);
-      setResent(true);
-    } catch { setErr("Could not resend verification email. Please try again later."); }
-  };
-
-  return (
-    <div style={css.root}>
-      <style>{globalCSS}</style>
-      <div style={css.ambient} />
-      <div style={css.card}>
-        <div style={{ textAlign: "center", marginBottom: 8 }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>📬</div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 900, color: "#e8e0d5", marginBottom: 8 }}>Verify your email</div>
-          <div style={{ fontSize: 13, color: "#6b6560", fontFamily: "sans-serif", lineHeight: 1.6 }}>
-            We sent a verification link to<br/>
-            <strong style={{ color: "#c8b896" }}>{user.email}</strong><br/>
-            Please check your inbox and click the link.
-          </div>
-        </div>
-        {err && <ErrBox msg={err} />}
-        {resent && <div style={css.successBox}><div style={{ fontSize: 13, color: "#6b6560" }}>Verification email resent!</div></div>}
-        <button onClick={handleCheck} disabled={checking} style={css.primaryBtn} className="h-btn">
-          {checking ? <span className="h-spin" style={css.spinner} /> : "I've verified my email"}
-        </button>
-        <GhostBtn label="Resend verification email" onClick={handleResend} />
-        <GhostBtn label="Sign out and use a different email" onClick={onSignOut} />
-      </div>
-    </div>
   );
 }
 
@@ -200,7 +142,14 @@ function LoginForm({ auth, go }) {
   const [err,   setErr]   = useState("");
   const submit = async (e) => {
     e.preventDefault(); setErr(""); setBusy(true);
-    try { await signInWithEmailAndPassword(auth, email.trim(), pw); }
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), pw);
+      if (!cred.user.emailVerified) {
+        await signOut(auth);
+        setErr("Please verify your email before signing in. Check your inbox for the verification link.");
+        return;
+      }
+    }
     catch (ex) { setErr(friendlyErr(ex.code)); }
     finally    { setBusy(false); }
   };
@@ -236,6 +185,7 @@ function SignupForm({ auth, go }) {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
       await updateProfile(cred.user, { displayName: name.trim() });
       await sendEmailVerification(cred.user);
+      await signOut(auth);
       setSent(true);
     } catch (ex) { setErr(friendlyErr(ex.code)); }
     finally      { setBusy(false); }
