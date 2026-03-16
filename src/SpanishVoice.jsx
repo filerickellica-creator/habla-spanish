@@ -7,11 +7,12 @@ const _fn = getFunctions();
 const callCloudFn = httpsCallable(_fn, "callClaude");
 
 const SCENARIOS = [
-  { id: "cafe", emoji: "☕", label: "Café", color: "#c8956c", prompt: "You are a friendly Spanish barista at a cozy café in Madrid. Greet the customer warmly, take their order, and keep small talk going. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
-  { id: "market", emoji: "🛒", label: "Mercado", color: "#6cbf8a", prompt: "You are a vendor at a lively Spanish market selling fresh produce. Describe your items, negotiate prices, and chat. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
-  { id: "directions", emoji: "🗺️", label: "Direcciones", color: "#6cb4c8", prompt: "You are a helpful local on the streets of Barcelona giving directions to a tourist. Use street vocabulary and helpful phrases. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
-  { id: "restaurant", emoji: "🍽️", label: "Restaurante", color: "#c86c6c", prompt: "You are an enthusiastic waiter at a traditional Spanish restaurant. Describe the menu and take orders. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
-  { id: "amigo", emoji: "👋", label: "Amigo", color: "#a06cc8", prompt: "You are a fun, casual Spanish-speaking friend catching up. Talk about weekend plans and everyday life. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "cafe", emoji: "☕", label: "Café", color: "#c8956c", locked: false, prompt: "You are a friendly Spanish barista at a cozy café in Madrid. Greet the customer warmly, take their order, and keep small talk going. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "market", emoji: "🛒", label: "Mercado", color: "#6cbf8a", locked: true, prompt: "You are a vendor at a lively Spanish market selling fresh produce. Describe your items, negotiate prices, and chat. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "directions", emoji: "🗺️", label: "Direcciones & Transporte", color: "#6cb4c8", locked: true, prompt: "You are a helpful local on the streets of Barcelona giving directions to a tourist. Use street vocabulary and helpful phrases. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "restaurant", emoji: "🍽️", label: "Restaurante", color: "#c86c6c", locked: true, prompt: "You are an enthusiastic waiter at a traditional Spanish restaurant. Describe the menu and take orders. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "amigo", emoji: "👋", label: "Amigo", color: "#a06cc8", locked: true, prompt: "You are a fun, casual Spanish-speaking friend catching up. Talk about weekend plans and everyday life. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "interview", emoji: "💼", label: "Entrevista de Trabajo", color: "#c89f6c", locked: true, prompt: "You are a professional interviewer conducting a job interview in Spanish. Ask about experience, skills, and motivation. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
 ];
 
 const LEVELS = [
@@ -284,7 +285,7 @@ export default function SpanishVoice({ user, userData, controls }) {
     <div style={{
       minHeight: "100vh", background: "#0e0e14", color: "#e8e0d5",
       fontFamily: "'Palatino Linotype', Georgia, serif",
-      display: "flex", flexDirection: "column", alignItems: "center", padding: "0 0 48px",
+      display: "flex", flexDirection: "column", alignItems: "center", padding: "0 0 80px",
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&display=swap');
@@ -294,69 +295,103 @@ export default function SpanishVoice({ user, userData, controls }) {
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 2px; }
       `}</style>
-      <div style={{ width: "100%", maxWidth: 420, padding: "52px 24px 0", animation: "fadeUp 0.6s ease" }}>
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>🇪🇸</div>
+      <div style={{ width: "100%", maxWidth: 420, padding: "40px 24px 0", animation: "fadeUp 0.6s ease" }}>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "#1a1a24", border: "1px solid #2a2a38", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="8" width="2.5" height="8" rx="1.25" fill="#c8956c" opacity="0.6" />
+                  <rect x="7" y="5" width="2.5" height="14" rx="1.25" fill="#c8956c" opacity="0.8" />
+                  <rect x="11" y="3" width="2.5" height="18" rx="1.25" fill="#c8956c" />
+                  <rect x="15" y="6" width="2.5" height="12" rx="1.25" fill="#c8956c" opacity="0.8" />
+                  <rect x="19" y="9" width="2.5" height="6" rx="1.25" fill="#c8956c" opacity="0.6" />
+                </svg>
+              </div>
+              <div>
+                <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 32, fontWeight: 900, margin: 0, color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
+                <p style={{ margin: 0, fontSize: 9.5, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Speak Spanish. Live it.</p>
+              </div>
+            </div>
             <button onClick={() => setShowAccount(true)} style={{
               background: "none", border: "1px solid #2a2a38", color: "#3a3a4a",
               borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer",
-              marginTop: 8, transition: "all 0.2s",
+              transition: "all 0.2s",
             }}
               onMouseEnter={e => { e.currentTarget.style.color = "#a78bfa"; e.currentTarget.style.borderColor = "#a78bfa"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}
             >👤 Account</button>
-            <button onClick={() => controls && controls.signOut()} style={{ background: "none", border: "1px solid #2a2a38", color: "#3a3a4a", borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer", marginTop: 8, marginLeft: 6, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.borderColor = "#f87171"; }} onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}>🚪 Sign Out</button>
           </div>
-          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, margin: "0 0 6px", color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
-          <p style={{ margin: 0, fontSize: 13, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Voice Spanish Practice</p>
-          <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak naturally. Your AI conversation partner listens, responds in Spanish, and helps you improve.</p>
+          <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak Spanish freely. I will listen and help you improve.</p>
         </div>
         {!supported && (
           <div style={{ background: "#2a1a1a", border: "1px solid #c86c6c", borderRadius: 12, padding: 16, marginBottom: 20, fontSize: 13, color: "#f87171", fontFamily: "sans-serif" }}>
-            ⚠️ Your browser does not support speech recognition. Please use Chrome or Safari.
+            Your browser does not support speech recognition. Please use Chrome or Safari.
           </div>
         )}
         <div style={{ marginBottom: 28 }}>
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Level</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {LEVELS.map(l => (
-              <button key={l.id} onClick={() => setLevel(l.id)} style={{
-                padding: "12px 16px", borderRadius: 10, textAlign: "left",
-                border: `1.5px solid ${level === l.id ? "#c8956c" : "#1e1e2a"}`,
-                background: level === l.id ? "#c8956c18" : "#12121a",
-                color: level === l.id ? "#e8d5c0" : "#5a5555",
-                cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
-              }}>{l.label}</button>
-            ))}
+            {LEVELS.map(l => {
+              const isLocked = l.id !== "beginner";
+              return (
+                <button key={l.id} onClick={() => !isLocked && setLevel(l.id)} style={{
+                  padding: "12px 16px", borderRadius: 10, textAlign: "left",
+                  border: `1.5px solid ${level === l.id ? "#c8956c" : "#1e1e2a"}`,
+                  background: level === l.id ? "#c8956c18" : "#12121a",
+                  color: level === l.id ? "#e8d5c0" : "#5a5555",
+                  cursor: isLocked ? "default" : "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  opacity: isLocked ? 0.5 : 1,
+                }}>
+                  <span>{l.label}</span>
+                  {isLocked && <span style={{ fontSize: 16, opacity: 0.5 }}>🔒</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
-        <div>
-        {/* Translator */}
-        <TranslatorModule />
 
+        <div style={{ marginBottom: 28 }}>
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {SCENARIOS.map((s, i) => (
-              <button key={s.id} onClick={() => startScenario(s)} disabled={!supported} style={{
+              <button key={s.id} onClick={() => !s.locked && supported && startScenario(s)} disabled={!supported || s.locked} style={{
                 padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
-                background: "#12121a", cursor: supported ? "pointer" : "not-allowed", textAlign: "left",
+                background: "#12121a", cursor: !s.locked && supported ? "pointer" : "default", textAlign: "left",
                 animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
+                opacity: s.locked ? 0.5 : 1, position: "relative",
               }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; }}
+                onMouseEnter={e => { if (!s.locked) { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; } }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = "#12121a"; }}
               >
+                {s.locked && <span style={{ position: "absolute", top: 12, right: 12, fontSize: 14, opacity: 0.5 }}>🔒</span>}
                 <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: s.locked ? "#5a5555" : "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
               </button>
             ))}
           </div>
         </div>
+
+        <div style={{ marginBottom: 28 }}>
+          <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Translate</p>
+          <div style={{ position: "relative" }}>
+            <div style={{ opacity: 0.5, pointerEvents: "none" }}>
+              <TranslatorModule />
+            </div>
+            <span style={{ position: "absolute", top: 16, right: 16, fontSize: 16, opacity: 0.5 }}>🔒</span>
+          </div>
+        </div>
       </div>
-        <button onClick={() => setScreen("vocab")} style={{ marginTop: 20, width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#12121a", color: "#8a8075", cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 12 }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#c4b5fd"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.color = "#8a8075"; }}>
-          <span style={{ fontSize: 22 }}>📚</span>
-          <div><div style={{ fontWeight: 700, fontSize: 14 }}>Vocabulario</div><div style={{ fontSize: 12, marginTop: 2, opacity: 0.6 }}>500 words · 8 modules · flip cards</div></div>
-        </button>
+
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#12121a", borderTop: "1px solid #1e1e2a", padding: "14px 24px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", zIndex: 20 }} onClick={() => setScreen("vocab")}>
+        <span style={{ fontSize: 22 }}>📚</span>
+        <div style={{ fontFamily: "sans-serif" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#e8e0d5" }}>Vocabulario</div>
+          <div style={{ fontSize: 12, marginTop: 2, color: "#6b6560" }}>500 words · 8 modules · flip cards</div>
+        </div>
+      </div>
+      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={controls} onClose={() => setShowAccount(false)} />)}
     </div>
   );
 
