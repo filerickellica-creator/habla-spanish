@@ -161,7 +161,9 @@ export default function App() {
     return <ResetPasswordScreen oobCode={oobCode} />;
   }
 
-  // verifyEmail is handled directly by AuthModule's VerifyEmailScreen
+  if (mode === "verifyEmail" && oobCode) {
+    return <VerifyEmailLanding oobCode={oobCode} auth={auth} />;
+  }
 
   return (
     <AuthModule onReady={(user, userData, controls) => {

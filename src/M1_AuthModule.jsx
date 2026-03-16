@@ -5,7 +5,6 @@ import { getAuth, onAuthStateChanged,
          createUserWithEmailAndPassword,
          sendPasswordResetEmail,
          sendEmailVerification,
-         applyActionCode,
          updateProfile, signOut }          from "firebase/auth";
 import { getFirestore, doc, getDoc,
          setDoc, onSnapshot, serverTimestamp }         from "firebase/firestore";
@@ -135,40 +134,6 @@ function VerifyEmailScreen({ user, auth }) {
   const [resent, setResent]   = useState(false);
   const [err, setErr]         = useState("");
   const [checking, setChecking] = useState(false);
-  const [autoStatus, setAutoStatus] = useState(""); // for debugging
-
-  // Auto-verify if URL contains oobCode (user arrived via verification link)
-  useEffect(() => {
-    const params  = new URLSearchParams(window.location.search);
-    const mode    = params.get("mode");
-    const oobCode = params.get("oobCode");
-    if (mode === "verifyEmail" && oobCode) {
-      (async () => {
-        setChecking(true);
-        setAutoStatus("Applying verification code...");
-        try {
-          await applyActionCode(auth, oobCode);
-          setAutoStatus("Code applied! Refreshing...");
-          await auth.currentUser.reload();
-          await auth.currentUser.getIdToken(true);
-          window.location.href = window.location.origin;
-        } catch (ex) {
-          setAutoStatus("applyActionCode error: " + (ex.code || ex.message));
-          // oobCode might already be used - try reload anyway
-          try {
-            await auth.currentUser.reload();
-            if (auth.currentUser.emailVerified) {
-              await auth.currentUser.getIdToken(true);
-              window.location.href = window.location.origin;
-              return;
-            }
-          } catch (_) { /* ignore */ }
-          setErr("Verification failed: " + (ex.code || ex.message));
-          setChecking(false);
-        }
-      })();
-    }
-  }, [auth]);
 
   const handleCheckVerified = async () => {
     setErr(""); setChecking(true);
@@ -218,17 +183,12 @@ function VerifyEmailScreen({ user, auth }) {
         <div style={css.form}>
           <div style={css.successBox}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>📬</div>
-            <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 4 }}>Verify your email (v3)</div>
+            <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 4 }}>Verify your email</div>
             <div style={{ fontSize: 13, color: "#6b6560", lineHeight: 1.6 }}>
               A verification link was sent to <strong style={{ color: "#c8b896" }}>{user.email}</strong>.<br/>
               Click the link in your email, then come back here.
             </div>
           </div>
-          {autoStatus && (
-            <div style={{ background: "#0e1a2a", border: "1px solid #2a4a6a33", borderRadius: 9, padding: "10px 14px", fontSize: 12, color: "#7ab", fontFamily: "monospace", marginBottom: 8, wordBreak: "break-all" }}>
-              {autoStatus}
-            </div>
-          )}
           {err && <ErrBox msg={err} />}
           {resent && (
             <div style={{ ...css.successBox, background: "#0a1a12", marginBottom: 8 }}>
@@ -345,7 +305,7 @@ function SignupForm({ auth, go }) {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
       await updateProfile(cred.user, { displayName: name.trim() });
-      await sendEmailVerification(cred.user, { url: APP_URL, handleCodeInApp: false });
+      await sendEmailVerification(cred.user, { url: APP_URL, handleCodeInApp: true });
       setDone(true);
     } catch (ex) { setErr(friendlyErr(ex.code)); }
     finally      { setBusy(false); }
