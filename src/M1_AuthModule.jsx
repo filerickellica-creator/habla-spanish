@@ -25,6 +25,7 @@ const firebaseApp = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CON
 const auth        = getAuth(firebaseApp);
 const db          = getFirestore(firebaseApp);
 const SESSION_KEY = "habla_session_token";
+const APP_URL     = "https://habla-espanyol.web.app";
 const generateSessionToken = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export const AuthContext = createContext(null);
@@ -133,15 +134,14 @@ function VerifyEmailScreen({ user, auth }) {
   const handleCheckVerified = async () => {
     setErr(""); setChecking(true);
     try {
-      await user.reload();
-      const refreshed = auth.currentUser;
-      if (refreshed && refreshed.emailVerified) {
-        // Force token refresh so onAuthStateChanged fires with updated emailVerified
-        await refreshed.getIdToken(true);
-        // Trigger a re-auth cycle by reloading
+      // Reload user from Firebase server to get fresh emailVerified status
+      await auth.currentUser.reload();
+      if (auth.currentUser.emailVerified) {
+        // Force ID token refresh, then full page reload to re-trigger onAuthStateChanged
+        await auth.currentUser.getIdToken(true);
         window.location.reload();
       } else {
-        setErr("Email not verified yet. Please click the link in your email first.");
+        setErr("Email not verified yet. Check your inbox and click the link.");
       }
     } catch (ex) {
       setErr("Could not check verification status. Please try again.");
@@ -153,7 +153,7 @@ function VerifyEmailScreen({ user, auth }) {
   const handleResend = async () => {
     setErr(""); setBusy(true); setResent(false);
     try {
-      await sendEmailVerification(user);
+      await sendEmailVerification(user, { url: APP_URL, handleCodeInApp: false });
       setResent(true);
     } catch (ex) {
       if (ex.code === "auth/too-many-requests") {
@@ -241,7 +241,7 @@ function LoginForm({ auth, go }) {
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), pw);
       if (!cred.user.emailVerified) {
-        await sendEmailVerification(cred.user);
+        await sendEmailVerification(cred.user, { url: APP_URL, handleCodeInApp: false });
         setErr("Please verify your email first. A new verification link has been sent.");
         // Don't sign out — let onAuthStateChanged show the verify screen
       }
@@ -303,7 +303,7 @@ function SignupForm({ auth, go }) {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
       await updateProfile(cred.user, { displayName: name.trim() });
-      await sendEmailVerification(cred.user);
+      await sendEmailVerification(cred.user, { url: APP_URL, handleCodeInApp: false });
       setDone(true);
     } catch (ex) { setErr(friendlyErr(ex.code)); }
     finally      { setBusy(false); }
