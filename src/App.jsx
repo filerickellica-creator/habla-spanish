@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
-import { getAuth, confirmPasswordReset, verifyPasswordResetCode, applyActionCode } from "firebase/auth";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { getAuth, confirmPasswordReset, verifyPasswordResetCode, applyActionCode, signOut } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import AuthModule from "./M1_AuthModule";
 import TrialModule from "./M2_TrialModule";
 import PaywallModule from "./M3_PaywallModule";
 import SpanishVoice from "./SpanishVoice";
+import HomescreenPrompt from "./HomescreenPrompt";
 
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0",
@@ -87,14 +88,13 @@ function ResetPasswordScreen({ oobCode }) {
 }
 
 function VerifyEmailLanding({ oobCode, auth }) {
-  const [status, setStatus] = useState("verifying"); // verifying | success | error
+  const [status, setStatus] = useState("verifying");
   const [err, setErr]       = useState("");
 
   useEffect(() => {
     (async () => {
       try {
         await applyActionCode(auth, oobCode);
-        // Update cached user so persistence has emailVerified: true
         if (auth.currentUser) {
           await auth.currentUser.reload();
           await auth.currentUser.getIdToken(true);
@@ -148,11 +148,38 @@ function VerifyEmailLanding({ oobCode, auth }) {
   );
 }
 
+const INACTIVITY_TIMEOUT = 60 * 1000; // 1 minute
+
+function useAutoSignOut(controlsRef) {
+  const timerRef = useRef(null);
+
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      if (controlsRef.current?.signOut) controlsRef.current.signOut();
+    }, INACTIVITY_TIMEOUT);
+  }, [controlsRef]);
+
+  useEffect(() => {
+    const events = ["mousedown", "keydown", "touchstart", "scroll", "mousemove"];
+    events.forEach(e => window.addEventListener(e, resetTimer));
+    resetTimer();
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [resetTimer]);
+}
+
 export default function App() {
   const [expired, setExpired]             = useState(false);
   const [currentUserData, setCurrentUserData] = useState(null);
+  const [showHomescreenPrompt, setShowHomescreenPrompt] = useState(false);
+  const controlsRef = useRef(null);
 
-  // Detect Firebase password-reset action in URL
+  useAutoSignOut(controlsRef);
+
+  // Detect Firebase action in URL
   const params  = new URLSearchParams(window.location.search);
   const mode    = params.get("mode");
   const oobCode = params.get("oobCode");
@@ -166,16 +193,27 @@ export default function App() {
   }
 
   return (
-    <AuthModule onReady={(user, userData, controls) => {
-      if (currentUserData !== userData) setCurrentUserData(userData);
-      if (expired || userData?.subscriptionStatus === "expired") {
-        return <PaywallModule userData={userData} />;
-      }
-      return (
-        <TrialModule userData={userData} onExpired={() => setExpired(true)} onUpgrade={() => setExpired(true)}>
-          <SpanishVoice user={user} userData={userData} controls={controls} />
-        </TrialModule>
-      );
-    }} />
+    <>
+      <AuthModule onReady={(user, userData, controls) => {
+        controlsRef.current = controls;
+        if (currentUserData !== userData) setCurrentUserData(userData);
+
+        // Show homescreen prompt once per session on login
+        if (userData && !sessionStorage.getItem("habla_hs_shown")) {
+          sessionStorage.setItem("habla_hs_shown", "1");
+          setTimeout(() => setShowHomescreenPrompt(true), 1500);
+        }
+
+        if (expired || userData?.subscriptionStatus === "expired") {
+          return <PaywallModule userData={userData} />;
+        }
+        return (
+          <TrialModule userData={userData} onExpired={() => setExpired(true)} onUpgrade={() => setExpired(true)}>
+            <SpanishVoice user={user} userData={userData} controls={controls} />
+          </TrialModule>
+        );
+      }} />
+      {showHomescreenPrompt && <HomescreenPrompt onClose={() => setShowHomescreenPrompt(false)} />}
+    </>
   );
 }

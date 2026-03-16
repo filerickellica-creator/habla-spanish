@@ -91,15 +91,15 @@ export default function AccountModule({ user, userData, controls, onClose }) {
           )}
         </div>
 
-        {/* Upgrade button — only show for trial/expired */}
+        {/* Subscribe button — only show for trial/expired */}
         {userData?.subscriptionStatus !== "active" && (
-          <a href="#upgrade" style={{
+          <a href="#subscribe" onClick={(e) => { e.preventDefault(); onClose(); if (controls?.showPaywall) controls.showPaywall(); }} style={{
             display:"block", textAlign:"center",
             background:"#c86c3a", color:"#fff",
             borderRadius:12, padding:"12px 0", fontSize:14, fontWeight:700,
             textDecoration:"none", marginBottom:12,
-            transition:"opacity 0.2s",
-          }}>Upgrade to Premium →</a>
+            transition:"opacity 0.2s", cursor:"pointer",
+          }}>Subscribe →</a>
         )}
 
         {/* Sign out */}

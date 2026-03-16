@@ -63,16 +63,11 @@ export default function AuthModule({ onReady }) {
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (unsubSession) { unsubSession(); unsubSession = null; }
       if (fbUser) {
-        // Block unverified users — but always re-check with server first,
-        // because local cache may be stale after verification in another tab.
+        // Block unverified emails
         if (!fbUser.emailVerified) {
-          try { await fbUser.reload(); } catch (_) { /* offline fallback */ }
-          if (!auth.currentUser?.emailVerified) {
-            setUser(auth.currentUser || fbUser);
-            setUserData(null);
-            setPhase("verify");
-            return;
-          }
+          setUser(fbUser);
+          setPhase("verify-email");
+          return;
         }
         const data = await fetchOrCreateUserDoc(fbUser);
         const userRef = doc(db, "users", fbUser.uid);
@@ -116,7 +111,7 @@ export default function AuthModule({ onReady }) {
   const controls = { signOut: handleSignOut, refreshUserData };
 
   if (phase === "loading") return <SplashScreen />;
-  if (phase === "verify") return <VerifyEmailScreen user={user} auth={auth} />;
+  if (phase === "verify-email") return <VerifyEmailScreen auth={auth} user={user} />;
   if (phase === "ready") return (
     <AuthContext.Provider value={{ user, userData, controls }}>
       {onReady(user, userData, controls)}
@@ -129,86 +124,57 @@ export default function AuthModule({ onReady }) {
   );
 }
 
-function VerifyEmailScreen({ user, auth }) {
-  const [busy, setBusy]       = useState(false);
-  const [resent, setResent]   = useState(false);
-  const [err, setErr]         = useState("");
-  const [checking, setChecking] = useState(false);
+function VerifyEmailScreen({ auth, user }) {
+  const [resent, setResent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
 
-  const handleCheckVerified = async () => {
-    setErr(""); setChecking(true);
-    try {
-      await auth.currentUser.reload();
-      if (auth.currentUser.emailVerified) {
-        await auth.currentUser.getIdToken(true);
-        window.location.href = window.location.origin;
-      } else {
-        setErr("Email not verified yet. Check your inbox and click the link.");
-      }
-    } catch (ex) {
-      setErr("Could not check: " + (ex.code || ex.message));
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setErr(""); setBusy(true); setResent(false);
+  const resend = async () => {
+    setBusy(true); setErr("");
     try {
       await sendEmailVerification(user, { url: APP_URL, handleCodeInApp: true });
       setResent(true);
-    } catch (ex) {
-      if (ex.code === "auth/too-many-requests") {
-        setErr("Too many attempts. Please wait a few minutes before trying again.");
-      } else {
-        setErr("Could not send verification email. Please try again.");
-      }
-    } finally {
-      setBusy(false);
-    }
+    } catch { setErr("Could not send email. Try again in a minute."); }
+    finally { setBusy(false); }
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem(SESSION_KEY);
-    signOut(auth);
+  const checkVerified = async () => {
+    setBusy(true); setErr("");
+    try {
+      await user.reload();
+      if (user.emailVerified) {
+        window.location.reload();
+      } else {
+        setErr("Email not verified yet. Check your inbox and click the link.");
+      }
+    } catch { setErr("Could not check. Try again."); }
+    finally { setBusy(false); }
   };
 
   return (
     <div style={css.root}>
       <style>{globalCSS}</style>
       <div style={css.ambient} />
-      <div style={css.card}>
-        <Logo />
-        <p style={css.tagline}>Verify your email to continue</p>
-        <div style={css.form}>
-          <div style={css.successBox}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>📬</div>
-            <div style={{ fontWeight: 700, color: "#e8e0d5", marginBottom: 4 }}>Verify your email</div>
-            <div style={{ fontSize: 13, color: "#6b6560", lineHeight: 1.6 }}>
-              A verification link was sent to <strong style={{ color: "#c8b896" }}>{user.email}</strong>.<br/>
-              Click the link in your email, then come back here.
-            </div>
-          </div>
-          {err && <ErrBox msg={err} />}
-          {resent && (
-            <div style={{ ...css.successBox, background: "#0a1a12", marginBottom: 8 }}>
-              <div style={{ fontSize: 13, color: "#6cbf8a" }}>Verification email sent!</div>
-            </div>
-          )}
-          <button type="button" onClick={handleCheckVerified} disabled={checking}
-                  style={css.primaryBtn} className="h-btn">
-            {checking ? <span className="h-spin" style={css.spinner} /> : "I've verified my email"}
-          </button>
-          <button type="button" onClick={handleResend} disabled={busy}
-                  style={{ ...css.ghostBtn, textAlign: "center" }}>
-            {busy ? "Sending..." : "Resend verification email"}
-          </button>
-          <button type="button" onClick={handleSignOut}
-                  style={{ ...css.ghostBtn, textAlign: "center", color: "#6b6560", marginTop: 14 }}>
+      <div style={{ ...css.card, textAlign: "center" }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>📬</div>
+        <h2 style={{ color: "#e8e0d5", fontSize: 20, fontWeight: 800, margin: "0 0 8px", fontFamily: "Georgia, serif" }}>Verify your email</h2>
+        <p style={{ color: "#6b6560", fontSize: 13, fontFamily: "sans-serif", lineHeight: 1.7, margin: "0 0 20px" }}>
+          We sent a verification link to<br />
+          <strong style={{ color: "#c8b896" }}>{user?.email}</strong><br />
+          Please check your inbox and click the link.
+        </p>
+        {err && <div style={{ ...css.errorBox, textAlign: "left", marginBottom: 12 }}><span>!</span><span>{err}</span></div>}
+        <button onClick={checkVerified} disabled={busy} style={{ ...css.primaryBtn, marginBottom: 10 }}>
+          {busy ? "Checking..." : "I've verified my email"}
+        </button>
+        <button onClick={resend} disabled={busy || resent} style={{ ...css.ghostBtn, width: "100%", textAlign: "center", padding: "10px 0" }}>
+          {resent ? "Email sent! Check your inbox." : "Resend verification email"}
+        </button>
+        <div style={{ borderTop: "1px solid #1a1a26", marginTop: 18, paddingTop: 14 }}>
+          <button onClick={() => { localStorage.removeItem(SESSION_KEY); signOut(auth); }} style={{ ...css.ghostBtn, color: "#5a5050", textDecoration: "none", fontSize: 12, padding: 0 }}>
             Sign out and use a different email
           </button>
         </div>
-        <Footer />
       </div>
     </div>
   );
@@ -245,7 +211,6 @@ function LoginForm({ auth, go }) {
       if (!cred.user.emailVerified) {
         await sendEmailVerification(cred.user, { url: APP_URL, handleCodeInApp: true });
         setErr("Please verify your email first. A new verification link has been sent.");
-        // Don't sign out — let onAuthStateChanged show the verify screen
       }
     }
     catch (ex) { setErr(friendlyErr(ex.code)); }
@@ -264,21 +229,34 @@ function LoginForm({ auth, go }) {
   );
 }
 
-const pwChecks = (pw) => ({
-  length:    pw.length >= 8,
-  uppercase: /[A-Z]/.test(pw),
-  lowercase: /[a-z]/.test(pw),
-  number:    /[0-9]/.test(pw),
-  special:   /[!@#$%&*]/.test(pw),
-});
+function validatePassword(pw) {
+  if (pw.length < 8) return "Password must be at least 8 characters.";
+  if (!/[A-Z]/.test(pw)) return "Password must include an uppercase letter.";
+  if (!/[a-z]/.test(pw)) return "Password must include a lowercase letter.";
+  if (!/[0-9]/.test(pw)) return "Password must include a number.";
+  if (!/[^A-Za-z0-9]/.test(pw)) return "Password must include a special character (!@#$%&*).";
+  return null;
+}
 
-const pwStrength = (pw) => {
-  const c = pwChecks(pw);
-  return [c.length, c.uppercase, c.lowercase, c.number, c.special].filter(Boolean).length;
-};
-
-const strengthLabel = (s) => ["", "Weak", "Weak", "Fair", "Good", "Strong"][s];
-const strengthColor = (s) => ["#2a2a38", "#c86c6c", "#c86c6c", "#c8b86c", "#6cbf8a", "#6cbf8a"][s];
+function PasswordStrength({ pw }) {
+  const checks = [
+    { label: "8+ characters", pass: pw.length >= 8 },
+    { label: "Uppercase (A-Z)", pass: /[A-Z]/.test(pw) },
+    { label: "Lowercase (a-z)", pass: /[a-z]/.test(pw) },
+    { label: "Number (0-9)", pass: /[0-9]/.test(pw) },
+    { label: "Special (!@#$%&*)", pass: /[^A-Za-z0-9]/.test(pw) },
+  ];
+  if (!pw) return null;
+  return (
+    <div style={{ marginTop: 6, marginBottom: 8 }}>
+      {checks.map(c => (
+        <div key={c.label} style={{ fontSize: 11, fontFamily: "sans-serif", color: c.pass ? "#4ade80" : "#5a5050", display: "flex", alignItems: "center", gap: 6, lineHeight: 1.8 }}>
+          <span>{c.pass ? "\u2713" : "\u25CB"}</span><span>{c.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function SignupForm({ auth, go }) {
   const [name,    setName]    = useState("");
@@ -292,13 +270,11 @@ function SignupForm({ auth, go }) {
   const [agreed,  setAgreed]  = useState(false);
   const [done,    setDone]    = useState(false);
 
-  const strength = pwStrength(pw);
-  const checks   = pwChecks(pw);
-
   const submit = async (e) => {
     e.preventDefault(); setErr("");
     if (!name.trim())  { setErr("Please enter your name."); return; }
-    if (strength < 3)  { setErr("Password is too weak. Use 8+ chars with uppercase, number, and symbol."); return; }
+    const pwErr = validatePassword(pw);
+    if (pwErr) { setErr(pwErr); return; }
     if (pw !== pw2)    { setErr("Passwords do not match."); return; }
     if (!agreed)       { setErr("Please accept the Terms of Service and Privacy Policy."); return; }
     setBusy(true);
@@ -330,35 +306,8 @@ function SignupForm({ auth, go }) {
       <TextField label="Your name" type="text"  value={name}  set={setName}  placeholder="Maria Garcia" />
       <TextField label="Email"     type="email" value={email} set={setEmail} placeholder="you@example.com" />
       <PwField   label="Password"  value={pw}   set={setPw}   show={show}
-                 toggle={() => setShow(v => !v)} />
-      {pw && (
-        <div style={{ marginTop: -10, marginBottom: 12 }}>
-          <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
-            {[1,2,3,4,5].map(i => (
-              <div key={i} style={{ flex: 1, height: 3, borderRadius: 2,
-                background: i <= strength ? strengthColor(strength) : "#1e1e2a",
-                transition: "background 0.2s" }} />
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: strengthColor(strength), fontFamily: "sans-serif", marginBottom: 6 }}>
-            {strengthLabel(strength)} — Use 8+ chars, uppercase, number & symbol
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {[
-              [checks.length,    "8+ characters"],
-              [checks.uppercase, "Uppercase letter (A-Z)"],
-              [checks.lowercase, "Lowercase letter (a-z)"],
-              [checks.number,    "Number (0-9)"],
-              [checks.special,   "Special character (!@#$%&*)"],
-            ].map(([ok, label]) => (
-              <div key={label} style={{ fontSize: 11, fontFamily: "sans-serif",
-                color: ok ? "#6cbf8a" : "#3a3a4a", transition: "color 0.2s" }}>
-                {ok ? "\u2713" : "\u2022"} {label}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+                 toggle={() => setShow(v => !v)} hint="" />
+      <PasswordStrength pw={pw} />
       <PwField   label="Repeat password" value={pw2} set={setPw2} show={show2}
                  toggle={() => setShow2(v => !v)}
                  hint={pw2 && pw !== pw2 ? "Passwords do not match" : pw2 && pw === pw2 ? "\u2713 Passwords match" : ""}

@@ -1,5 +1,6 @@
 import TranslatorModule from "./TranslatorModule";
 import VocabularyModules from "./VocabularyModules";
+import PaywallModule from "./M3_PaywallModule";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import AccountModule from "./M5_AccountModule";
@@ -9,9 +10,10 @@ const callCloudFn = httpsCallable(_fn, "callClaude");
 const SCENARIOS = [
   { id: "cafe", emoji: "☕", label: "Café", color: "#c8956c", prompt: "You are a friendly Spanish barista at a cozy café in Madrid. Greet the customer warmly, take their order, and keep small talk going. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "market", emoji: "🛒", label: "Mercado", color: "#6cbf8a", prompt: "You are a vendor at a lively Spanish market selling fresh produce. Describe your items, negotiate prices, and chat. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
-  { id: "directions", emoji: "🗺️", label: "Direcciones", color: "#6cb4c8", prompt: "You are a helpful local on the streets of Barcelona giving directions to a tourist. Use street vocabulary and helpful phrases. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "directions", emoji: "🗺️🚌", label: "Direcciones & Transporte", color: "#6cb4c8", prompt: "You are a helpful local on the streets of Barcelona giving directions and transportation advice to a tourist. Use street vocabulary, bus/metro references, and helpful phrases. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "restaurant", emoji: "🍽️", label: "Restaurante", color: "#c86c6c", prompt: "You are an enthusiastic waiter at a traditional Spanish restaurant. Describe the menu and take orders. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
   { id: "amigo", emoji: "👋", label: "Amigo", color: "#a06cc8", prompt: "You are a fun, casual Spanish-speaking friend catching up. Talk about weekend plans and everyday life. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
+  { id: "entrevista", emoji: "💼", label: "Entrevista de Trabajo", color: "#c8b06c", prompt: "You are a professional Spanish-speaking interviewer conducting a job interview. Ask about experience, skills, and goals. Be professional but friendly. Speak ONLY in Spanish. Keep replies to 1-2 short sentences." },
 ];
 
 const LEVELS = [
@@ -108,6 +110,12 @@ export default function SpanishVoice({ user, userData, controls }) {
   const [messages, setMessages] = useState([]);
   const [status, setStatus] = useState("idle");
   const [showAccount, setShowAccount] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  const isTrial = userData?.subscriptionStatus === "trial";
+  const isLevelLocked = (lvlId) => isTrial && lvlId !== "beginner";
+  const isScenarioLocked = (scenId) => isTrial && scenId !== "cafe";
+  const isTranslatorLocked = isTrial;
   const [transcript, setTranscript] = useState("");
   const [aiText, setAiText] = useState("");
   const [error, setError] = useState("");
@@ -141,11 +149,11 @@ export default function SpanishVoice({ user, userData, controls }) {
     synthRef.current.cancel();
   };
 
-  const speak = useCallback((text) => {
+  const speak = useCallback((text, slow = false) => {
     synthRef.current.cancel();
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = "es-ES";
-    utter.rate = 0.92;
+    utter.rate = slow ? 0.55 : 0.92;
     utter.pitch = 1.05;
     const voices = synthRef.current.getVoices();
     const spanishVoice = voices.find(v => v.lang.startsWith("es"));
@@ -275,6 +283,9 @@ export default function SpanishVoice({ user, userData, controls }) {
 
   const accentColor = scenario?.color || "#c8956c";
 
+  if (showPaywall) return (
+    <PaywallModule userData={userData} onBack={() => setShowPaywall(false)} />
+  );
 
   if (screen === "home") return (
     <div style={{
@@ -292,21 +303,30 @@ export default function SpanishVoice({ user, userData, controls }) {
       `}</style>
       <div style={{ width: "100%", maxWidth: 420, padding: "52px 24px 0", animation: "fadeUp 0.6s ease" }}>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>🇪🇸</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: "linear-gradient(135deg, #c8956c, #a87040)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  {[14, 20, 10, 18, 12, 16].map((h, i) => (
+                    <div key={i} style={{ width: 2.5, height: h, background: "#fff", borderRadius: 2 }} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 32, fontWeight: 900, margin: 0, color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
+                <p style={{ margin: 0, fontSize: 9, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Speak Spanish. Live it.</p>
+              </div>
+            </div>
             <button onClick={() => setShowAccount(true)} style={{
               background: "none", border: "1px solid #2a2a38", color: "#3a3a4a",
               borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer",
-              marginTop: 8, transition: "all 0.2s",
+              transition: "all 0.2s",
             }}
               onMouseEnter={e => { e.currentTarget.style.color = "#a78bfa"; e.currentTarget.style.borderColor = "#a78bfa"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}
             >👤 Account</button>
-            <button onClick={() => controls && controls.signOut()} style={{ background: "none", border: "1px solid #2a2a38", color: "#3a3a4a", borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer", marginTop: 8, marginLeft: 6, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.borderColor = "#f87171"; }} onMouseLeave={e => { e.currentTarget.style.color = "#3a3a4a"; e.currentTarget.style.borderColor = "#2a2a38"; }}>🚪 Sign Out</button>
           </div>
-          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, margin: "0 0 6px", color: "#e8e0d5", letterSpacing: "-1px" }}>Habla</h1>
-          <p style={{ margin: 0, fontSize: 13, color: "#6b6560", letterSpacing: 3, textTransform: "uppercase", fontFamily: "sans-serif" }}>Voice Spanish Practice</p>
-          <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak naturally. Your AI conversation partner listens, responds in Spanish, and helps you improve.</p>
+          <p style={{ margin: "14px 0 0", fontSize: 15, color: "#8a8075", lineHeight: 1.7, fontFamily: "sans-serif", fontStyle: "italic" }}>Speak Spanish freely. I will listen and help you improve.</p>
         </div>
         {!supported && (
           <div style={{ background: "#2a1a1a", border: "1px solid #c86c6c", borderRadius: 12, padding: 16, marginBottom: 20, fontSize: 13, color: "#f87171", fontFamily: "sans-serif" }}>
@@ -316,43 +336,73 @@ export default function SpanishVoice({ user, userData, controls }) {
         <div style={{ marginBottom: 28 }}>
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Level</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {LEVELS.map(l => (
-              <button key={l.id} onClick={() => setLevel(l.id)} style={{
-                padding: "12px 16px", borderRadius: 10, textAlign: "left",
-                border: `1.5px solid ${level === l.id ? "#c8956c" : "#1e1e2a"}`,
-                background: level === l.id ? "#c8956c18" : "#12121a",
-                color: level === l.id ? "#e8d5c0" : "#5a5555",
-                cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
-              }}>{l.label}</button>
-            ))}
+            {LEVELS.map(l => {
+              const locked = isLevelLocked(l.id);
+              return (
+                <button key={l.id} onClick={() => locked ? setShowAccount(true) : setLevel(l.id)} style={{
+                  padding: "12px 16px", borderRadius: 10, textAlign: "left",
+                  border: `1.5px solid ${locked ? "#1e1e2a" : level === l.id ? "#c8956c" : "#1e1e2a"}`,
+                  background: locked ? "#0e0e14" : level === l.id ? "#c8956c18" : "#12121a",
+                  color: locked ? "#3a3535" : level === l.id ? "#e8d5c0" : "#5a5555",
+                  cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, transition: "all 0.2s",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  opacity: locked ? 0.6 : 1,
+                }}>
+                  <span>{l.label}</span>
+                  {locked && <span style={{ fontSize: 14 }}>🔒</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div>
-        {/* Translator */}
-        <TranslatorModule />
-
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {SCENARIOS.map((s, i) => (
-              <button key={s.id} onClick={() => startScenario(s)} disabled={!supported} style={{
-                padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
-                background: "#12121a", cursor: supported ? "pointer" : "not-allowed", textAlign: "left",
-                animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = "#12121a"; }}
-              >
-                <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
-              </button>
-            ))}
+            {SCENARIOS.map((s, i) => {
+              const locked = isScenarioLocked(s.id);
+              return (
+                <button key={s.id} onClick={() => locked ? setShowAccount(true) : startScenario(s)} disabled={!supported && !locked} style={{
+                  padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
+                  background: locked ? "#0e0e14" : "#12121a",
+                  cursor: "pointer", textAlign: "left",
+                  animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
+                  opacity: locked ? 0.5 : 1, position: "relative",
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = locked ? "#3a3535" : s.color; e.currentTarget.style.background = locked ? "#0e0e14" : `${s.color}12`; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = locked ? "#0e0e14" : "#12121a"; }}
+                >
+                  <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: locked ? "#3a3535" : "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
+                  {locked && <span style={{ position: "absolute", top: 10, right: 10, fontSize: 14 }}>🔒</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
+        {/* Translator */}
+        {isTranslatorLocked ? (
+          <div style={{ marginBottom: 28 }}>
+            <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Translate</p>
+            <button onClick={() => setShowAccount(true)} style={{ width: "100%", padding: "18px 20px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#0e0e14", cursor: "pointer", textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.5 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 22 }}>🔤</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#3a3535", fontFamily: "sans-serif" }}>English → Spanish</div>
+                  <div style={{ fontSize: 11, color: "#2a2825", fontFamily: "sans-serif", marginTop: 2 }}>Say a word or phrase to translate</div>
+                </div>
+              </div>
+              <span style={{ fontSize: 14 }}>🔒</span>
+            </button>
+          </div>
+        ) : (
+          <TranslatorModule />
+        )}
       </div>
         <button onClick={() => setScreen("vocab")} style={{ marginTop: 20, width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #1e1e2a", background: "#12121a", color: "#8a8075", cursor: "pointer", fontFamily: "sans-serif", fontSize: 14, textAlign: "left", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 12 }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#c4b5fd"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.color = "#8a8075"; }}>
           <span style={{ fontSize: 22 }}>📚</span>
           <div><div style={{ fontWeight: 700, fontSize: 14 }}>Vocabulario</div><div style={{ fontSize: 12, marginTop: 2, opacity: 0.6 }}>500 words · 8 modules · flip cards</div></div>
         </button>
+      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={{...controls, showPaywall: () => setShowPaywall(true)}} onClose={() => setShowAccount(false)} />)}
     </div>
   );
 
@@ -404,8 +454,22 @@ export default function SpanishVoice({ user, userData, controls }) {
             <div style={{ maxWidth: "80%", padding: "12px 16px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: m.role === "user" ? `${accentColor}25` : "#18181f", border: `1px solid ${m.role === "user" ? accentColor + "50" : "#2a2a38"}`, color: m.role === "user" ? "#e8d5c0" : "#d8d0c8", fontSize: 15, lineHeight: 1.65 }}>
               {m.role === "ai" && !showTranslations ? extractSpanishOnly(m.text) : m.text}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, padding: "0 4px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, padding: "0 4px", flexWrap: "wrap" }}>
               <div style={{ fontSize: 10, color: "#3a3a4a" }}>{m.role === "ai" ? `🇪🇸 ${scenario?.label}` : "Tú"}</div>
+              {m.role === "ai" && status === "idle" && (
+                <>
+                  <button onClick={() => speak(extractSpanishOnly(m.text))}
+                    style={{ background: "none", border: "1px solid #2a2a42", color: "#4a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a42"; e.currentTarget.style.color = "#4a4a6a"; }}
+                  >🔊 Repeat</button>
+                  <button onClick={() => speak(extractSpanishOnly(m.text), true)}
+                    style={{ background: "none", border: "1px solid #2a2a42", color: "#4a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a42"; e.currentTarget.style.color = "#4a4a6a"; }}
+                  >🐢 Repeat Slowly</button>
+                </>
+              )}
               {m.role === "user" && !corrections[i] && (
                 <button onClick={() => checkGrammar(m.text, i)} disabled={grammarLoading}
                   style={{ background: "none", border: "1px solid #2a2a42", color: "#4a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
@@ -494,7 +558,7 @@ export default function SpanishVoice({ user, userData, controls }) {
           {isListening ? "Release to send" : "Hold to speak"}
         </p>
       </div>
-      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={controls} onClose={() => setShowAccount(false)} />)}
+      {showAccount && user && (<AccountModule user={user} userData={userData || {subscriptionStatus:"trial", name: user.email}} controls={{...controls, showPaywall: () => setShowPaywall(true)}} onClose={() => setShowAccount(false)} />)}
     </div>
   );
 }
