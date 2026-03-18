@@ -105,9 +105,10 @@ export default function App() {
       if (expired || userData?.subscriptionStatus === "expired") {
         return <PaywallModule userData={userData} />;
       }
+      const extendedControls = { ...controls, onUpgrade: () => setExpired(true) };
       return (
         <TrialModule userData={userData} onExpired={() => setExpired(true)} onUpgrade={() => setExpired(true)}>
-          <SpanishVoice user={user} userData={userData} controls={controls} />
+          <SpanishVoice user={user} userData={userData} controls={extendedControls} />
         </TrialModule>
       );
     }} />

@@ -93,13 +93,29 @@ export default function AccountModule({ user, userData, controls, onClose }) {
 
         {/* Upgrade button — only show for trial/expired */}
         {userData?.subscriptionStatus !== "active" && (
-          <a href="#upgrade" style={{
-            display:"block", textAlign:"center",
+          <button onClick={() => { onClose(); if (controls.onUpgrade) controls.onUpgrade(); }} style={{
+            display:"block", width:"100%", textAlign:"center",
             background:"#c86c3a", color:"#fff",
             borderRadius:12, padding:"12px 0", fontSize:14, fontWeight:700,
-            textDecoration:"none", marginBottom:12,
+            border:"none", cursor:"pointer", marginBottom:12,
             transition:"opacity 0.2s",
-          }}>Upgrade to Premium →</a>
+          }}>Upgrade to Premium →</button>
+        )}
+
+        {/* Manage subscription — only for active users */}
+        {userData?.subscriptionStatus === "active" && userData?.lemonSqueezyCustomerId && (
+          <a
+            href="https://habla-espanyol.lemonsqueezy.com/billing"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display:"block", textAlign:"center",
+              background:"none", border:"1px solid #2a2018", color:"#8a7a6a",
+              borderRadius:12, padding:"11px 0", fontSize:13,
+              textDecoration:"none", marginBottom:12,
+              transition:"all 0.2s",
+            }}
+          >Manage Subscription</a>
         )}
 
         {/* Sign out */}

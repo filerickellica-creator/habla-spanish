@@ -1,14 +1,31 @@
 import { useState } from "react";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
-// ─── UPDATE THESE WHEN STRIPE IS READY ───────────────────────────────────────
-const STRIPE_MONTHLY_URL = "https://buy.stripe.com/PLACEHOLDER_MONTHLY";
-const STRIPE_ANNUAL_URL  = "https://buy.stripe.com/PLACEHOLDER_ANNUAL";
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── LEMON SQUEEZY VARIANT IDS ─────────────────────────────────────────────
+// Replace these with your actual Lemon Squeezy variant IDs from your dashboard
+const LS_MONTHLY_VARIANT_ID = "REPLACE_WITH_MONTHLY_VARIANT_ID";
+const LS_ANNUAL_VARIANT_ID  = "REPLACE_WITH_ANNUAL_VARIANT_ID";
+// ────────────────────────────────────────────────────────────────────────────
 
 export default function PaywallModule({ userData }) {
   const [hover, setHover] = useState(null);
+  const [loading, setLoading] = useState(null); // "monthly" | "annual" | null
 
   const name = userData?.name || "there";
+
+  const handleCheckout = async (variantId, planId) => {
+    setLoading(planId);
+    try {
+      const functions = getFunctions();
+      const createCheckout = httpsCallable(functions, "createCheckout");
+      const result = await createCheckout({ variantId });
+      window.open(result.data.url, "_blank");
+    } catch (err) {
+      alert("Could not start checkout. Please try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
 
   return (
     <div style={{
@@ -19,7 +36,7 @@ export default function PaywallModule({ userData }) {
     }}>
       {/* Logo */}
       <div style={{marginBottom:8}}>
-        <span style={{fontSize:36}}>🇪��</span>
+        <span style={{fontSize:36}}>🇪🇸</span>
       </div>
       <h1 style={{
         color:"#f0e6d3", fontSize:32, fontWeight:800,
@@ -57,11 +74,12 @@ export default function PaywallModule({ userData }) {
           price="$39.99"
           period="/ year"
           note="Save 58% — just $3.33/mo"
-          url={STRIPE_ANNUAL_URL}
+          onClick={() => handleCheckout(LS_ANNUAL_VARIANT_ID, "annual")}
           highlight={true}
           hover={hover === "annual"}
           onHover={setHover}
           id="annual"
+          loading={loading === "annual"}
         />
         {/* Monthly */}
         <PricingCard
@@ -69,11 +87,12 @@ export default function PaywallModule({ userData }) {
           price="$7.99"
           period="/ month"
           note="Cancel anytime"
-          url={STRIPE_MONTHLY_URL}
+          onClick={() => handleCheckout(LS_MONTHLY_VARIANT_ID, "monthly")}
           highlight={false}
           hover={hover === "monthly"}
           onHover={setHover}
           id="monthly"
+          loading={loading === "monthly"}
         />
       </div>
 
@@ -97,13 +116,13 @@ export default function PaywallModule({ userData }) {
       </div>
 
       <p style={{color:"#3a3530", fontSize:11}}>
-        Secure payment via Stripe · Cancel anytime
+        Secure payment via Lemon Squeezy · Cancel anytime
       </p>
     </div>
   );
 }
 
-function PricingCard({ badge, title, price, period, note, url, highlight, hover, onHover, id }) {
+function PricingCard({ badge, title, price, period, note, onClick, highlight, hover, onHover, id, loading }) {
   const active = hover;
   return (
     <div
@@ -114,11 +133,12 @@ function PricingCard({ badge, title, price, period, note, url, highlight, hover,
         border: `2px solid ${highlight ? (active ? "#c86c3a" : "#c86c3a88") : (active ? "#c8956c66" : "#2a2018")}`,
         borderRadius:16, padding:"24px 28px", minWidth:180,
         textAlign:"center", position:"relative",
-        transition:"all 0.2s", cursor:"pointer",
+        transition:"all 0.2s", cursor: loading ? "wait" : "pointer",
         transform: active ? "translateY(-2px)" : "none",
         boxShadow: active ? `0 8px 32px ${highlight ? "#c86c3a33" : "#00000033"}` : "none",
+        opacity: loading ? 0.7 : 1,
       }}
-      onClick={() => window.open(url, "_blank")}
+      onClick={loading ? undefined : onClick}
     >
       {badge && (
         <div style={{
@@ -141,7 +161,7 @@ function PricingCard({ badge, title, price, period, note, url, highlight, hover,
         borderRadius:24, padding:"10px 0", fontSize:14, fontWeight:700,
         transition:"all 0.2s",
       }}>
-        Get Started →
+        {loading ? "Loading..." : "Get Started →"}
       </div>
     </div>
   );
