@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { isModuleLocked } from "./M6_AdminModule";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VOCABULARY DATA — 8 Modules, ~500 words total
@@ -758,43 +759,63 @@ function UnitSection({ unit, mod, learnedIds, onToggle, globalSearch }) {
 // MODULE CARD (overview)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ModuleCard({ mod, totalWords, learnedCount, onClick, active }) {
+function ModuleCard({ mod, totalWords, learnedCount, onClick, active, locked }) {
   const pct = totalWords ? Math.round((learnedCount / totalWords) * 100) : 0;
   return (
     <div
-      onClick={onClick}
+      onClick={locked ? undefined : onClick}
       style={{
-        cursor: "pointer",
-        background: active ? mod.colorLight : "#fff",
-        border: `2px solid ${active ? mod.color : "#e5e7eb"}`,
+        cursor: locked ? "not-allowed" : "pointer",
+        background: locked ? "#f5f5f5" : active ? mod.colorLight : "#fff",
+        border: `2px solid ${locked ? "#d1d5db" : active ? mod.color : "#e5e7eb"}`,
         borderRadius: 16, padding: "16px 18px",
         transition: "all 0.2s ease",
         boxShadow: active ? `0 4px 20px ${mod.color}28` : "0 1px 6px #0000000d",
+        opacity: locked ? 0.55 : 1,
+        position: "relative",
       }}
     >
+      {locked && (
+        <div style={{
+          position: "absolute", top: 10, right: 10,
+          background: "#fee2e2", color: "#dc2626", fontSize: 10, fontWeight: 700,
+          padding: "2px 8px", borderRadius: 6, letterSpacing: "0.5px",
+        }}>
+          LOCKED
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <span style={{ fontSize: 26 }}>{mod.emoji}</span>
-        <span style={{
+        <span style={{ fontSize: 26 }}>{locked ? "🔒" : mod.emoji}</span>
+        {!locked && <span style={{
           fontSize: 11, fontWeight: 700, background: mod.colorLight,
           color: mod.color, border: `1px solid ${mod.colorMid}`,
           borderRadius: 99, padding: "2px 8px",
         }}>
           {learnedCount}/{totalWords}
-        </span>
+        </span>}
       </div>
-      <div style={{ marginTop: 8, fontSize: 15, fontWeight: 800, color: "#111827" }}>
+      <div style={{ marginTop: 8, fontSize: 15, fontWeight: 800, color: locked ? "#9ca3af" : "#111827" }}>
         Module {mod.id}
       </div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginTop: 1 }}>{mod.title}</div>
-      <div style={{ fontSize: 11.5, color: "#6b7280", marginTop: 4, lineHeight: 1.4 }}>{mod.description}</div>
-      <div style={{ marginTop: 12, background: "#e5e7eb", borderRadius: 99, height: 5, overflow: "hidden" }}>
-        <div style={{
-          height: "100%", width: `${pct}%`,
-          background: mod.color, borderRadius: 99,
-          transition: "width 0.5s ease",
-        }} />
-      </div>
-      <div style={{ fontSize: 10.5, color: mod.color, fontWeight: 700, marginTop: 4 }}>{pct}% complete</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: locked ? "#9ca3af" : "#374151", marginTop: 1 }}>{mod.title}</div>
+      <div style={{ fontSize: 11.5, color: locked ? "#9ca3af" : "#6b7280", marginTop: 4, lineHeight: 1.4 }}>{mod.description}</div>
+      {!locked && (
+        <>
+          <div style={{ marginTop: 12, background: "#e5e7eb", borderRadius: 99, height: 5, overflow: "hidden" }}>
+            <div style={{
+              height: "100%", width: `${pct}%`,
+              background: mod.color, borderRadius: 99,
+              transition: "width 0.5s ease",
+            }} />
+          </div>
+          <div style={{ fontSize: 10.5, color: mod.color, fontWeight: 700, marginTop: 4 }}>{pct}% complete</div>
+        </>
+      )}
+      {locked && (
+        <div style={{ marginTop: 12, fontSize: 11.5, color: "#9ca3af", fontStyle: "italic" }}>
+          This module is currently locked by the administrator.
+        </div>
+      )}
     </div>
   );
 }
@@ -803,7 +824,7 @@ function ModuleCard({ mod, totalWords, learnedCount, onClick, active }) {
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function VocabularyModules() {
+export default function VocabularyModules({ moduleLocks = {} }) {
   const [activeModule, setActiveModule] = useState(null);
   const [search, setSearch] = useState("");
   const [learnedIds, setLearnedIds] = useState(() => new Set(storageGet("habla_v2_learned", [])));
@@ -921,10 +942,12 @@ export default function VocabularyModules() {
             const total = mod.units.reduce((a, u) => a + u.words.length, 0);
             const learned = mod.units.reduce((a, u) =>
               a + u.words.filter(w => learnedIds.has(`${mod.id}-${u.title}-${w.word}`)).length, 0);
+            const locked = isModuleLocked(moduleLocks, `vocab_${mod.id}`);
             return (
               <ModuleCard
                 key={mod.id} mod={mod} totalWords={total} learnedCount={learned}
-                active={false} onClick={() => setActiveModule(mod.id)}
+                active={false} onClick={() => !locked && setActiveModule(mod.id)}
+                locked={locked}
               />
             );
           })}
