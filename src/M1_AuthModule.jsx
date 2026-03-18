@@ -62,11 +62,14 @@ export default function AuthModule({ onReady }) {
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (unsubSession) { unsubSession(); unsubSession = null; }
       if (fbUser) {
-        // Check email verification
+        // Check email verification — reload from server to avoid stale cache
         if (!fbUser.emailVerified) {
-          setUser(fbUser);
-          setPhase("verify-email");
-          return;
+          try { await fbUser.reload(); } catch {}
+          if (!fbUser.emailVerified) {
+            setUser(fbUser);
+            setPhase("verify-email");
+            return;
+          }
         }
         const data = await fetchOrCreateUserDoc(fbUser);
         const userRef = doc(db, "users", fbUser.uid);
@@ -212,7 +215,7 @@ function SignupForm({ auth, go }) {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
       await updateProfile(cred.user, { displayName: name.trim() });
-      await sendEmailVerification(cred.user);
+      await sendEmailVerification(cred.user, { url: "https://habla-espanyol.web.app", handleCodeInApp: true });
     } catch (ex) { setErr(friendlyErr(ex.code)); }
     finally      { setBusy(false); }
   };
@@ -282,7 +285,7 @@ function VerifyEmailScreen({ user, auth, onVerified, onSignOut }) {
   const [busy, setBusy] = useState(false);
   const handleResend = async () => {
     setBusy(true);
-    try { await sendEmailVerification(user); setResent(true); }
+    try { await sendEmailVerification(user, { url: "https://habla-espanyol.web.app", handleCodeInApp: true }); setResent(true); }
     catch {} finally { setBusy(false); }
   };
   const handleCheck = async () => {
