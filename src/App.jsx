@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { getAuth, confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import AuthModule from "./M1_AuthModule";
 import TrialModule from "./M2_TrialModule";
 import PaywallModule from "./M3_PaywallModule";
 import SpanishVoice from "./SpanishVoice";
+import HomescreenPrompt from "./HomescreenPrompt";
 
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0",
@@ -86,9 +87,30 @@ function ResetPasswordScreen({ oobCode }) {
   );
 }
 
+const INACTIVITY_TIMEOUT = 60 * 1000; // 1 minute
+
 export default function App() {
   const [expired, setExpired]             = useState(false);
   const [currentUserData, setCurrentUserData] = useState(null);
+  const controlsRef = useRef(null);
+  const timerRef = useRef(null);
+
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      if (controlsRef.current) controlsRef.current.signOut();
+    }, INACTIVITY_TIMEOUT);
+  }, []);
+
+  useEffect(() => {
+    const events = ["mousemove", "mousedown", "touchstart", "keydown", "scroll"];
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+    resetTimer();
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [resetTimer]);
 
   // Detect Firebase password-reset action in URL
   const params  = new URLSearchParams(window.location.search);
@@ -101,6 +123,7 @@ export default function App() {
 
   return (
     <AuthModule onReady={(user, userData, controls) => {
+      controlsRef.current = controls;
       if (currentUserData !== userData) setCurrentUserData(userData);
       if (expired || userData?.subscriptionStatus === "expired") {
         return <PaywallModule userData={userData} />;
@@ -108,6 +131,7 @@ export default function App() {
       return (
         <TrialModule userData={userData} onExpired={() => setExpired(true)} onUpgrade={() => setExpired(true)}>
           <SpanishVoice user={user} userData={userData} controls={controls} />
+          <HomescreenPrompt />
         </TrialModule>
       );
     }} />

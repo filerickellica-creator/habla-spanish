@@ -26,7 +26,7 @@ export default function TrialModule({ userData, onExpired, onUpgrade, children }
   if (status === "checking" || status === "expired") return null;
   return (
     <>
-      {status === "trial" && daysLeft !== null && <TrialBanner daysLeft={daysLeft} onUpgrade={onUpgrade} />}
+      {status === "trial" && daysLeft !== null && daysLeft <= 3 && <TrialBanner daysLeft={daysLeft} onUpgrade={onUpgrade} />}
       {children}
     </>
   );

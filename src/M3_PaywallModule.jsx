@@ -1,12 +1,11 @@
 import { useState } from "react";
 
-// ─── UPDATE THESE WHEN STRIPE IS READY ───────────────────────────────────────
-const STRIPE_MONTHLY_URL = "https://buy.stripe.com/PLACEHOLDER_MONTHLY";
-const STRIPE_ANNUAL_URL  = "https://buy.stripe.com/PLACEHOLDER_ANNUAL";
+// ─── UPDATE WHEN LEMON SQUEEZY STORE IS APPROVED ────────────────────────────
+const LEMONSQUEEZY_MONTHLY_URL = "https://YOUR_STORE.lemonsqueezy.com/checkout/PLACEHOLDER";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function PaywallModule({ userData }) {
-  const [hover, setHover] = useState(null);
+  const [hover, setHover] = useState(false);
 
   const name = userData?.name || "there";
 
@@ -19,7 +18,7 @@ export default function PaywallModule({ userData }) {
     }}>
       {/* Logo */}
       <div style={{marginBottom:8}}>
-        <span style={{fontSize:36}}>🇪��</span>
+        <span style={{fontSize:36}}>🇪🇸</span>
       </div>
       <h1 style={{
         color:"#f0e6d3", fontSize:32, fontWeight:800,
@@ -45,36 +44,37 @@ export default function PaywallModule({ userData }) {
         </p>
       </div>
 
-      {/* Pricing cards */}
-      <div style={{
-        display:"flex", gap:16, flexWrap:"wrap",
-        justifyContent:"center", marginBottom:24,
-      }}>
-        {/* Annual — Best Value */}
-        <PricingCard
-          badge="Best Value"
-          title="Annual"
-          price="$39.99"
-          period="/ year"
-          note="Save 58% — just $3.33/mo"
-          url={STRIPE_ANNUAL_URL}
-          highlight={true}
-          hover={hover === "annual"}
-          onHover={setHover}
-          id="annual"
-        />
-        {/* Monthly */}
-        <PricingCard
-          title="Monthly"
-          price="$7.99"
-          period="/ month"
-          note="Cancel anytime"
-          url={STRIPE_MONTHLY_URL}
-          highlight={false}
-          hover={hover === "monthly"}
-          onHover={setHover}
-          id="monthly"
-        />
+      {/* Single pricing card */}
+      <div
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          background:"#1e1408",
+          border:`2px solid ${hover ? "#c86c3a" : "#c86c3a88"}`,
+          borderRadius:16, padding:"28px 36px", minWidth:220,
+          textAlign:"center", position:"relative",
+          transition:"all 0.2s", cursor:"pointer",
+          transform: hover ? "translateY(-2px)" : "none",
+          boxShadow: hover ? "0 8px 32px #c86c3a33" : "none",
+          marginBottom:24,
+        }}
+        onClick={() => window.open(LEMONSQUEEZY_MONTHLY_URL, "_blank")}
+      >
+        <p style={{color:"#8a7a6a", fontSize:12, letterSpacing:2, textTransform:"uppercase", margin:"0 0 8px"}}>Monthly</p>
+        <p style={{margin:"0 0 4px"}}>
+          <span style={{color:"#f0e6d3", fontSize:36, fontWeight:800}}>$6.99</span>
+          <span style={{color:"#8a7a6a", fontSize:13}}>/ month</span>
+        </p>
+        <p style={{color:"#c8956c", fontSize:12, margin:"0 0 20px"}}>Cancel anytime</p>
+        <div style={{
+          background:"#c86c3a",
+          border:"1px solid #c86c3a",
+          color:"#fff",
+          borderRadius:24, padding:"10px 0", fontSize:14, fontWeight:700,
+          transition:"all 0.2s",
+        }}>
+          Get Started →
+        </div>
       </div>
 
       {/* Features */}
@@ -85,7 +85,7 @@ export default function PaywallModule({ userData }) {
       }}>
         {[
           "✓  Unlimited AI conversations",
-          "✓  All 5 scenarios",
+          "✓  All 6 scenarios",
           "✓  Grammar feedback",
           "✓  Vocabulary modules",
           "✓  Hints & coaching",
@@ -97,52 +97,8 @@ export default function PaywallModule({ userData }) {
       </div>
 
       <p style={{color:"#3a3530", fontSize:11}}>
-        Secure payment via Stripe · Cancel anytime
+        Secure payment via Lemon Squeezy · Cancel anytime
       </p>
-    </div>
-  );
-}
-
-function PricingCard({ badge, title, price, period, note, url, highlight, hover, onHover, id }) {
-  const active = hover;
-  return (
-    <div
-      onMouseEnter={() => onHover(id)}
-      onMouseLeave={() => onHover(null)}
-      style={{
-        background: highlight ? "#1e1408" : "#141210",
-        border: `2px solid ${highlight ? (active ? "#c86c3a" : "#c86c3a88") : (active ? "#c8956c66" : "#2a2018")}`,
-        borderRadius:16, padding:"24px 28px", minWidth:180,
-        textAlign:"center", position:"relative",
-        transition:"all 0.2s", cursor:"pointer",
-        transform: active ? "translateY(-2px)" : "none",
-        boxShadow: active ? `0 8px 32px ${highlight ? "#c86c3a33" : "#00000033"}` : "none",
-      }}
-      onClick={() => window.open(url, "_blank")}
-    >
-      {badge && (
-        <div style={{
-          position:"absolute", top:-12, left:"50%", transform:"translateX(-50%)",
-          background:"#c86c3a", color:"#fff", fontSize:11, fontWeight:700,
-          padding:"3px 14px", borderRadius:20, whiteSpace:"nowrap",
-          letterSpacing:1,
-        }}>{badge}</div>
-      )}
-      <p style={{color:"#8a7a6a", fontSize:12, letterSpacing:2, textTransform:"uppercase", margin:"0 0 8px"}}>{title}</p>
-      <p style={{margin:"0 0 4px"}}>
-        <span style={{color:"#f0e6d3", fontSize:36, fontWeight:800}}>{price}</span>
-        <span style={{color:"#8a7a6a", fontSize:13}}>{period}</span>
-      </p>
-      <p style={{color:"#c8956c", fontSize:12, margin:"0 0 20px"}}>{note}</p>
-      <div style={{
-        background: highlight ? "#c86c3a" : "#1e1a14",
-        border: `1px solid ${highlight ? "#c86c3a" : "#c8956c44"}`,
-        color: highlight ? "#fff" : "#c8956c",
-        borderRadius:24, padding:"10px 0", fontSize:14, fontWeight:700,
-        transition:"all 0.2s",
-      }}>
-        Get Started →
-      </div>
     </div>
   );
 }
