@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
-import { getAuth, confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { getAuth, confirmPasswordReset, verifyPasswordResetCode, applyActionCode } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import AuthModule from "./M1_AuthModule";
 import TrialModule from "./M2_TrialModule";
 import PaywallModule from "./M3_PaywallModule";
 import SpanishVoice from "./SpanishVoice";
+import HomescreenPrompt from "./HomescreenPrompt";
 
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0",
@@ -86,9 +87,88 @@ function ResetPasswordScreen({ oobCode }) {
   );
 }
 
+function VerifyEmailLanding({ oobCode }) {
+  const [status, setStatus] = useState("verifying");
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        await applyActionCode(auth, oobCode);
+        setStatus("done");
+      } catch (ex) {
+        setErr(ex.code || ex.message || "Verification failed");
+        setStatus("error");
+      }
+    })();
+  }, [oobCode]);
+
+  const s = {
+    root: { minHeight: "100vh", background: "#0e0e14", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 16px", fontFamily: "Georgia, serif" },
+    card: { width: "100%", maxWidth: 400, background: "#12121a", border: "1px solid #1e1e2a", borderRadius: 20, padding: "36px 32px 28px", boxShadow: "0 24px 80px #00000070", textAlign: "center" },
+    btn: { marginTop: 16, width: "100%", padding: "13px", background: "linear-gradient(135deg, #c8956c, #a87040)", border: "none", borderRadius: 12, color: "#0e0e14", fontSize: 15, fontWeight: 800, cursor: "pointer", minHeight: 48 },
+  };
+
+  return (
+    <div style={s.root}>
+      <div style={s.card}>
+        {status === "verifying" && (
+          <>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>📬</div>
+            <h2 style={{ color: "#e8e0d5", fontSize: 22, margin: "0 0 8px" }}>Verifying your email...</h2>
+            <p style={{ color: "#6b6560", fontSize: 14, fontFamily: "sans-serif" }}>Please wait a moment.</p>
+          </>
+        )}
+        {status === "done" && (
+          <>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+            <h2 style={{ color: "#e8e0d5", fontSize: 22, margin: "0 0 8px" }}>Email verified!</h2>
+            <p style={{ color: "#6b6560", fontSize: 14, fontFamily: "sans-serif", lineHeight: 1.6 }}>
+              Your email has been verified. You can now use Habla.
+            </p>
+            <button style={s.btn} onClick={() => window.location.href = "/"}>Continue to Habla →</button>
+          </>
+        )}
+        {status === "error" && (
+          <>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
+            <h2 style={{ color: "#e8e0d5", fontSize: 22, margin: "0 0 8px" }}>Verification failed</h2>
+            <p style={{ color: "#6b6560", fontSize: 14, fontFamily: "sans-serif", lineHeight: 1.6 }}>
+              This link may have expired or already been used. Sign in and request a new verification email.
+            </p>
+            <p style={{ color: "#4a4540", fontSize: 12, fontFamily: "monospace", marginTop: 8 }}>{err}</p>
+            <button style={s.btn} onClick={() => window.location.href = "/"}>Go to Sign In</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const INACTIVITY_TIMEOUT = 60 * 1000; // 1 minute
+
 export default function App() {
   const [expired, setExpired]             = useState(false);
   const [currentUserData, setCurrentUserData] = useState(null);
+  const controlsRef = useRef(null);
+  const timerRef = useRef(null);
+
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      if (controlsRef.current) controlsRef.current.signOut();
+    }, INACTIVITY_TIMEOUT);
+  }, []);
+
+  useEffect(() => {
+    const events = ["mousemove", "mousedown", "touchstart", "keydown", "scroll"];
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+    resetTimer();
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [resetTimer]);
 
   // Detect Firebase password-reset action in URL
   const params  = new URLSearchParams(window.location.search);
@@ -98,9 +178,13 @@ export default function App() {
   if (mode === "resetPassword" && oobCode) {
     return <ResetPasswordScreen oobCode={oobCode} />;
   }
+  if (mode === "verifyEmail" && oobCode) {
+    return <VerifyEmailLanding oobCode={oobCode} />;
+  }
 
   return (
     <AuthModule onReady={(user, userData, controls) => {
+      controlsRef.current = controls;
       if (currentUserData !== userData) setCurrentUserData(userData);
       if (expired || userData?.subscriptionStatus === "expired") {
         return <PaywallModule userData={userData} />;
@@ -108,6 +192,7 @@ export default function App() {
       return (
         <TrialModule userData={userData} onExpired={() => setExpired(true)} onUpgrade={() => setExpired(true)}>
           <SpanishVoice user={user} userData={userData} controls={controls} />
+          <HomescreenPrompt />
         </TrialModule>
       );
     }} />

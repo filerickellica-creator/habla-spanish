@@ -57,6 +57,23 @@ exports.callClaude = onCall({ timeoutSeconds: 30, memory: "256MiB" }, async (req
     throw new HttpsError("permission-denied", "No active subscription.");
   }
 
+  // ── Rate limiting: 100/day, 300/week ──
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const dailyField = `apiCalls_${today}`;
+  const dailyCalls = user[dailyField] || 0;
+  if (dailyCalls >= 100) {
+    throw new HttpsError("resource-exhausted", "DAILY_LIMIT_REACHED");
+  }
+  // Weekly: sum last 7 days
+  const weeklyTotal = Array.from({ length: 7 }).reduce((sum, _, i) => {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = `apiCalls_${d.toISOString().slice(0, 10)}`;
+    return sum + (user[key] || 0);
+  }, 0);
+  if (weeklyTotal >= 300) {
+    throw new HttpsError("resource-exhausted", "WEEKLY_LIMIT_REACHED");
+  }
+
   const { system, messages, max_tokens } = request.data;
   const safePayload = {
     model: "claude-haiku-4-5-20251001",
@@ -77,6 +94,7 @@ exports.callClaude = onCall({ timeoutSeconds: 30, memory: "256MiB" }, async (req
 
   db.collection("users").doc(uid).update({
     totalConversations: admin.firestore.FieldValue.increment(1),
+    [dailyField]: admin.firestore.FieldValue.increment(1),
   }).catch(() => {});
 
   const reply = result.content?.find(b => b.type === "text")?.text || "Lo siento, no entendí.";

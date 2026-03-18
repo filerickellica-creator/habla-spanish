@@ -4,6 +4,7 @@ import { getAuth, onAuthStateChanged,
          signInWithEmailAndPassword,
          createUserWithEmailAndPassword,
          sendPasswordResetEmail,
+         sendEmailVerification,
          updateProfile, signOut }          from "firebase/auth";
 import { getFirestore, doc, getDoc,
          setDoc, onSnapshot, serverTimestamp }         from "firebase/firestore";
@@ -61,6 +62,15 @@ export default function AuthModule({ onReady }) {
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (unsubSession) { unsubSession(); unsubSession = null; }
       if (fbUser) {
+        // Check email verification — reload from server to avoid stale cache
+        if (!fbUser.emailVerified) {
+          try { await fbUser.reload(); } catch {}
+          if (!fbUser.emailVerified) {
+            setUser(fbUser);
+            setPhase("verify-email");
+            return;
+          }
+        }
         const data = await fetchOrCreateUserDoc(fbUser);
         const userRef = doc(db, "users", fbUser.uid);
         const localToken = localStorage.getItem(SESSION_KEY);
@@ -119,6 +129,11 @@ export default function AuthModule({ onReady }) {
   const controls = { signOut: handleSignOut, refreshUserData };
 
   if (phase === "loading") return <SplashScreen />;
+  if (phase === "verify-email") return (
+    <AuthContext.Provider value={{ user, userData: null, controls }}>
+      <VerifyEmailScreen user={user} auth={auth} onVerified={() => window.location.reload()} onSignOut={handleSignOut} />
+    </AuthContext.Provider>
+  );
   if (phase === "ready") return (
     <AuthContext.Provider value={{ user, userData, controls }}>
       {onReady(user, userData, controls)}
@@ -174,6 +189,14 @@ function LoginForm({ auth, go }) {
   );
 }
 
+const PW_RULES = [
+  { test: pw => pw.length >= 8, label: "8+ characters" },
+  { test: pw => /[A-Z]/.test(pw), label: "Uppercase letter (A-Z)" },
+  { test: pw => /[a-z]/.test(pw), label: "Lowercase letter (a-z)" },
+  { test: pw => /[0-9]/.test(pw), label: "Number (0-9)" },
+  { test: pw => /[!@#$%&*]/.test(pw), label: "Special character (!@#$%&*)" },
+];
+
 function SignupForm({ auth, go }) {
   const [name,  setName]  = useState("");
   const [email, setEmail] = useState("");
@@ -182,15 +205,17 @@ function SignupForm({ auth, go }) {
   const [busy,  setBusy]  = useState(false);
   const [err,   setErr]   = useState("");
   const [agreed, setAgreed] = useState(false);
+  const allPassed = PW_RULES.every(r => r.test(pw));
   const submit = async (e) => {
     e.preventDefault(); setErr("");
     if (!agreed) { setErr("Please accept the Terms of Service and Privacy Policy."); return; }
     if (!name.trim())  { setErr("Please enter your name."); return; }
-    if (pw.length < 6) { setErr("Password must be at least 6 characters."); return; }
+    if (!allPassed) { setErr("Password does not meet all requirements."); return; }
     setBusy(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
       await updateProfile(cred.user, { displayName: name.trim() });
+      await sendEmailVerification(cred.user, { url: "https://habla-espanyol.web.app", handleCodeInApp: true });
     } catch (ex) { setErr(friendlyErr(ex.code)); }
     finally      { setBusy(false); }
   };
@@ -199,7 +224,16 @@ function SignupForm({ auth, go }) {
       <TextField label="Your name" type="text"  value={name}  set={setName}  placeholder="Maria Garcia" />
       <TextField label="Email"     type="email" value={email} set={setEmail} placeholder="you@example.com" />
       <PwField   label="Password"  value={pw}   set={setPw}   show={show}
-                 toggle={() => setShow(v => !v)} hint="Minimum 6 characters" />
+                 toggle={() => setShow(v => !v)} />
+      {pw.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          {PW_RULES.map((r, i) => (
+            <div key={i} style={{ fontSize: 11, fontFamily: "sans-serif", color: r.test(pw) ? "#22c55e" : "#4a4540", marginBottom: 2 }}>
+              {r.test(pw) ? "✓" : "○"} {r.label}
+            </div>
+          ))}
+        </div>
+      )}
       {err && <ErrBox msg={err} />}
       <AgreeCheckbox agreed={agreed} setAgreed={setAgreed} />
       <PrimaryBtn busy={busy} label="Create Account" />
@@ -243,6 +277,40 @@ function ForgotForm({ auth, go }) {
       <PrimaryBtn busy={busy} label="Send Reset Link" />
       <GhostBtn label="Back to sign in" onClick={() => go("login")} />
     </form>
+  );
+}
+
+function VerifyEmailScreen({ user, auth, onVerified, onSignOut }) {
+  const [resent, setResent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const handleResend = async () => {
+    setBusy(true);
+    try { await sendEmailVerification(user, { url: "https://habla-espanyol.web.app", handleCodeInApp: true }); setResent(true); }
+    catch {} finally { setBusy(false); }
+  };
+  const handleCheck = async () => {
+    await user.reload();
+    if (user.emailVerified) onVerified();
+  };
+  return (
+    <div style={css.root}>
+      <style>{globalCSS}</style>
+      <div style={css.ambient} />
+      <div style={{ ...css.card, textAlign: "center" }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>📬</div>
+        <h2 style={{ color: "#f0e6d3", fontSize: 22, fontWeight: 700, margin: "0 0 8px", fontFamily: "Georgia, serif" }}>Verify your email</h2>
+        <p style={{ color: "#6b6560", fontSize: 14, fontFamily: "sans-serif", lineHeight: 1.6, margin: "0 0 24px" }}>
+          We sent a verification link to <strong style={{ color: "#c8b896" }}>{user?.email}</strong>. Click the link, then come back here.
+        </p>
+        <button onClick={handleCheck} style={{ ...css.primaryBtn, marginBottom: 12 }}>I've verified my email</button>
+        <button onClick={handleResend} disabled={busy || resent} style={{ ...css.ghostBtn, display: "block", width: "100%", textAlign: "center" }}>
+          {resent ? "Verification email sent!" : busy ? "Sending..." : "Resend verification email"}
+        </button>
+        <button onClick={onSignOut} style={{ ...css.ghostBtn, display: "block", width: "100%", textAlign: "center", marginTop: 8, color: "#3a3540" }}>
+          Sign out and use a different email
+        </button>
+      </div>
+    </div>
   );
 }
 
