@@ -59,7 +59,13 @@ async function fetchOrCreateUserDoc(firebaseUser) {
   const snap = await getDoc(ref);
 
   // Always read the master subscription record by email
-  const sub = await fetchOrCreateSubscription(firebaseUser.email);
+  let sub;
+  try {
+    sub = await fetchOrCreateSubscription(firebaseUser.email);
+  } catch (e) {
+    console.error("Subscription fetch/create failed:", e);
+    sub = { subscriptionStatus: "trial", trialDays: 10 };
+  }
 
   if (snap.exists()) {
     // Merge master subscription status into user data
