@@ -5,7 +5,6 @@ import AuthModule from "./M1_AuthModule";
 import TrialModule from "./M2_TrialModule";
 import PaywallModule from "./M3_PaywallModule";
 import SpanishVoice from "./SpanishVoice";
-import AdminModule, { isAdmin, useModuleLocks } from "./M6_AdminModule";
 
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0",
@@ -90,8 +89,6 @@ function ResetPasswordScreen({ oobCode }) {
 export default function App() {
   const [expired, setExpired]             = useState(false);
   const [currentUserData, setCurrentUserData] = useState(null);
-  const [showAdmin, setShowAdmin]         = useState(false);
-  const { locks: moduleLocks, loading: locksLoading } = useModuleLocks();
 
   // Detect Firebase password-reset action in URL
   const params  = new URLSearchParams(window.location.search);
@@ -110,22 +107,7 @@ export default function App() {
       }
       return (
         <TrialModule userData={userData} onExpired={() => setExpired(true)} onUpgrade={() => setExpired(true)}>
-          <SpanishVoice user={user} userData={userData} controls={controls} moduleLocks={moduleLocks} />
-          {isAdmin(user) && (
-            <button onClick={() => setShowAdmin(true)} style={{
-              position: "fixed", bottom: 20, right: 20, zIndex: 900,
-              width: 48, height: 48, borderRadius: "50%",
-              background: "linear-gradient(135deg, #c8956c, #a87040)",
-              border: "none", color: "#fff", fontSize: 20, cursor: "pointer",
-              boxShadow: "0 4px 20px rgba(200,149,108,0.4)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }} title="Admin: Module Lock Manager">
-              🔐
-            </button>
-          )}
-          {showAdmin && isAdmin(user) && (
-            <AdminModule user={user} onClose={() => setShowAdmin(false)} />
-          )}
+          <SpanishVoice user={user} userData={userData} controls={controls} />
         </TrialModule>
       );
     }} />

@@ -3,7 +3,6 @@ import VocabularyModules from "./VocabularyModules";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import AccountModule from "./M5_AccountModule";
-import { isModuleLocked } from "./M6_AdminModule";
 const _fn = getFunctions();
 const callCloudFn = httpsCallable(_fn, "callClaude");
 
@@ -102,7 +101,7 @@ function ApiKeyScreen({ onSave }) {
   );
 }
 
-export default function SpanishVoice({ user, userData, controls, moduleLocks }) {
+export default function SpanishVoice({ user, userData, controls }) {
   const [screen, setScreen] = useState("home");
   const [scenario, setScenario] = useState(null);
   const [level, setLevel] = useState("beginner");
@@ -338,24 +337,19 @@ export default function SpanishVoice({ user, userData, controls, moduleLocks }) 
 
           <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4a4540", fontFamily: "sans-serif", letterSpacing: 3, textTransform: "uppercase" }}>Scenario</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {SCENARIOS.map((s, i) => {
-              const locked = isModuleLocked(moduleLocks || {}, `scenario_${s.id}`);
-              return (
-              <button key={s.id} onClick={() => !locked && startScenario(s)} disabled={!supported || locked} style={{
-                padding: "18px 14px", borderRadius: 14, border: `1.5px solid ${locked ? "#c86c6c33" : "#1e1e2a"}`,
-                background: locked ? "#1a1218" : "#12121a", cursor: locked ? "not-allowed" : supported ? "pointer" : "not-allowed", textAlign: "left",
+            {SCENARIOS.map((s, i) => (
+              <button key={s.id} onClick={() => startScenario(s)} disabled={!supported} style={{
+                padding: "18px 14px", borderRadius: 14, border: "1.5px solid #1e1e2a",
+                background: "#12121a", cursor: supported ? "pointer" : "not-allowed", textAlign: "left",
                 animation: `fadeUp 0.5s ease ${i * 0.07}s both`, transition: "all 0.2s",
-                opacity: locked ? 0.5 : 1,
               }}
-                onMouseEnter={e => { if (!locked) { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; }}}
-                onMouseLeave={e => { if (!locked) { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = "#12121a"; }}}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.background = `${s.color}12`; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e2a"; e.currentTarget.style.background = "#12121a"; }}
               >
-                <div style={{ fontSize: 26, marginBottom: 6 }}>{locked ? "🔒" : s.emoji}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: locked ? "#5a4a4a" : "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
-                {locked && <div style={{ fontSize: 10, color: "#c86c6c", marginTop: 4, fontFamily: "sans-serif" }}>Locked</div>}
+                <div style={{ fontSize: 26, marginBottom: 6 }}>{s.emoji}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8", fontFamily: "sans-serif" }}>{s.label}</div>
               </button>
-              );
-            })}
+            ))}
           </div>
         </div>
       </div>
@@ -372,7 +366,7 @@ export default function SpanishVoice({ user, userData, controls, moduleLocks }) 
         <button onClick={() => setScreen("home")} style={{ background: "#18181f", border: "1px solid #2a2a38", color: "#6b6560", borderRadius: 8, width: 36, height: 36, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
         <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, color: "#e8e0d5" }}>📚 Vocabulario</span>
       </div>
-      <VocabularyModules moduleLocks={moduleLocks || {}} />
+      <VocabularyModules />
     </div>
   );
 
