@@ -10,6 +10,17 @@ service cloud.firestore {
                         .hasAny(['subscriptionStatus','subscriptionExpiry',
                                  'stripeCustomerId','trialStartedAt','trialDays']);
     }
+
+    // Master subscription record — 1 per email.
+    // Users can read their own (by email) and create if missing.
+    // Only admin (Firebase Console) can change subscription fields.
+    match /subscriptions/{emailId} {
+      allow read: if request.auth != null
+                  && request.auth.token.email.lower() == emailId;
+      allow create: if request.auth != null
+                    && request.auth.token.email.lower() == emailId;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

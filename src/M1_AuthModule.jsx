@@ -29,26 +29,56 @@ const generateSessionToken = () => `${Date.now()}-${Math.random().toString(36).s
 export const AuthContext = createContext(null);
 export const useAuth    = () => useContext(AuthContext);
 
+// Normalize email for use as Firestore document ID
+function normalizeEmail(email) {
+  return email.toLowerCase().trim();
+}
+
+// Master subscription record — ONE per email in "subscriptions" collection.
+// Admin manages this single document to control user access.
+async function fetchOrCreateSubscription(email) {
+  const emailKey = normalizeEmail(email);
+  const ref = doc(db, "subscriptions", emailKey);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return snap.data();
+  const freshSub = {
+    email:              emailKey,
+    subscriptionStatus: "trial",
+    trialStartedAt:     serverTimestamp(),
+    trialDays:          10,
+    subscriptionExpiry: null,
+    stripeCustomerId:   null,
+    createdAt:          serverTimestamp(),
+  };
+  await setDoc(ref, freshSub);
+  return { ...freshSub, trialStartedAt: new Date() };
+}
+
 async function fetchOrCreateUserDoc(firebaseUser) {
   const ref  = doc(db, "users", firebaseUser.uid);
   const snap = await getDoc(ref);
-  if (snap.exists()) return snap.data();
+
+  // Always read the master subscription record by email
+  const sub = await fetchOrCreateSubscription(firebaseUser.email);
+
+  if (snap.exists()) {
+    // Merge master subscription status into user data
+    const data = snap.data();
+    return { ...data, ...sub };
+  }
+
   const freshDoc = {
     name:               firebaseUser.displayName || firebaseUser.email.split("@")[0],
     email:              firebaseUser.email,
     createdAt:          serverTimestamp(),
-    trialStartedAt:     serverTimestamp(),
-    trialDays:          10,
-    subscriptionStatus: "trial",
     agreedToTerms:      true,
     agreedAt:           serverTimestamp(),
-    subscriptionExpiry: null,
-    stripeCustomerId:   null,
     totalConversations: 0,
     wordsLearned:       0,
   };
   await setDoc(ref, freshDoc);
-  return { ...freshDoc, trialStartedAt: new Date() };
+  // Merge master subscription into the returned data
+  return { ...freshDoc, ...sub };
 }
 
 export default function AuthModule({ onReady }) {
@@ -105,7 +135,10 @@ export default function AuthModule({ onReady }) {
   const refreshUserData = useCallback(async () => {
     if (!user) return;
     const snap = await getDoc(doc(db, "users", user.uid));
-    if (snap.exists()) setUserData(snap.data());
+    if (snap.exists()) {
+      const sub = await fetchOrCreateSubscription(user.email);
+      setUserData({ ...snap.data(), ...sub });
+    }
   }, [user]);
 
   const handleSignOut = useCallback(async () => {
