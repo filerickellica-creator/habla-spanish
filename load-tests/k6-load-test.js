@@ -41,7 +41,7 @@ const FIREBASE_API_KEY = "AIzaSyAWHZYkRMqwLM5NLxfna_4HcKru2P1Gzm0";
 const PROJECT_ID       = "habla-espanyol";
 const REGION           = "us-central1";
 
-const APP_URL          = "https://habla-spanish.web.app";
+const APP_URL          = __ENV.APP_URL || "https://habla-espanyol.web.app";
 const FUNCTION_URL     = `https://${REGION}-${PROJECT_ID}.cloudfunctions.net/callClaude`;
 const FIREBASE_AUTH_URL =
   `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`;
